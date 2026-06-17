@@ -94,6 +94,29 @@ npm run lint
 npm run build
 ```
 
+### Frontend API client
+
+Shared frontend API helpers live in `frontend/src/lib/api/` and use `NEXT_PUBLIC_API_BASE_URL`.
+
+```ts
+import { getCurrentUser, login } from "@/lib/api";
+
+const tokens = await login({ email, password });
+const user = await getCurrentUser(tokens.access);
+```
+
+The client supports passing JWT access tokens through `Authorization: Bearer ...` headers. Token storage and React auth context are intentionally deferred to the auth UI phase.
+
+### Frontend auth flow
+
+The frontend includes simple auth pages:
+
+- `http://localhost:3000/login`
+- `http://localhost:3000/register`
+- `http://localhost:3000/dashboard`
+
+Successful login stores access and refresh tokens in `localStorage` for MVP development. Registration creates the user, logs in with the submitted credentials, stores tokens, and redirects to the protected dashboard placeholder. The dashboard currently shows the current user's name/email and a logout button; the full dashboard UI comes later.
+
 ## Auth Endpoints
 
 Authentication endpoints live under `/api/v1/auth/`.

@@ -1,3 +1,5 @@
+import Link from "next/link";
+
 export default function Home() {
   return (
     <main className="min-h-screen px-6 py-10 sm:px-10">
@@ -13,6 +15,20 @@ export default function Home() {
             Next.js, TypeScript, Tailwind CSS, and the app router are in place.
             The real dashboard, auth screens, and API wiring come next.
           </p>
+          <div className="mt-8 flex flex-wrap gap-3">
+            <Link
+              className="rounded-md bg-parchment-100 px-4 py-3 text-sm font-semibold text-plum-950 transition hover:bg-parchment-200"
+              href="/login"
+            >
+              Log in
+            </Link>
+            <Link
+              className="rounded-md border border-white/15 px-4 py-3 text-sm font-semibold text-[#fff8e7] transition hover:bg-white/[0.06]"
+              href="/register"
+            >
+              Register
+            </Link>
+          </div>
         </div>
 
         <div className="grid gap-4 pb-10 sm:grid-cols-3">

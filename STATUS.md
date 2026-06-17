@@ -6,7 +6,7 @@ each Codex prompt completes and review is done.
 
 **Last updated**: 2026-06-17
 **Current phase**: Phase 5 - Frontend Dashboard
-**Current prompt**: 5.1 - Frontend auth/API client setup
+**Current prompt**: 5.2 - Dashboard page
 
 ---
 
@@ -72,7 +72,7 @@ each Codex prompt completes and review is done.
 
 ## Phase 5 - Frontend Dashboard
 
-- [ ] 5.1 - Frontend scaffold + auth
+- [x] 5.1 - Frontend scaffold + auth
 - [ ] 5.2 - Dashboard page
 - [ ] 5.3 - Today page
 - [ ] 5.4 - Task management page
@@ -82,6 +82,8 @@ each Codex prompt completes and review is done.
 **Notes**:
 - 2026-06-17: Added authenticated rule-based recommendation endpoint at `/api/v1/recommendations/next/`, scoped to today's plan and `request.user`, with ordering for missed tasks, priority, scheduled time, and stable tie-breakers. Frontend, AI, weekly review, and Never Miss Twice warning were not added. Next recommended prompt: implement Never Miss Twice warning before weekly review.
 - 2026-06-17: Initialized frontend foundation in `frontend/` with Next.js 14, TypeScript, Tailwind CSS, App Router, a simple check page, prepared `src/app`, `src/components`, `src/lib/api`, `src/types`, and `src/styles` structure, plus `NEXT_PUBLIC_API_BASE_URL` example. Auth UI, backend API calls, dashboard UI, frontend feature pages, and AI features were not added. Next recommended prompt: build frontend auth foundation and shared API client.
+- 2026-06-17: Added frontend API client foundation in `frontend/src/lib/api` with typed helpers for register, login, current user, categories, tasks, today's daily plan, next recommendation, streaks, discipline score, and weekly reviews. Added shared TypeScript API response types in `frontend/src/types`. Token storage, React auth context, auth pages, dashboard UI, and AI features were not added. Next recommended prompt: build frontend auth UI and token state.
+- 2026-06-17: Added frontend auth UI and token handling: `/login`, `/register`, localStorage token helpers, current-user hook, logout behavior, and a minimal protected `/dashboard` placeholder. Full dashboard widgets, task management UI, and AI features were not added. Next recommended prompt: build the dashboard page using the existing API client.
 
 ---
 
