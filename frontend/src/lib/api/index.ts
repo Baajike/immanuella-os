@@ -1,1 +1,15 @@
-export { API_BASE_URL, buildApiUrl } from "./client";
+export {
+  API_BASE_URL,
+  ApiError,
+  buildApiUrl,
+  getCurrentUser,
+  getNextRecommendation,
+  getStreaks,
+  getTodaysDailyPlan,
+  getTodaysDisciplineScore,
+  listCategories,
+  listTasks,
+  listWeeklyReviews,
+  login,
+  register,
+} from "./client";
