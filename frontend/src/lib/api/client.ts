@@ -1,13 +1,18 @@
 import type {
+  AddDailyTaskPayload,
   AuthTokens,
   Category,
   CreateTaskPayload,
   DailyPlan,
+  DailyTask,
   DisciplineScore,
   LoginPayload,
+  MissDailyTaskPayload,
   PaginatedResponse,
   Recommendation,
   RegisterPayload,
+  RescheduleDailyTaskPayload,
+  RescheduledDailyTask,
   Streak,
   Task,
   User,
@@ -137,6 +142,59 @@ export function createTask(accessToken: string, payload: CreateTaskPayload) {
 
 export function getTodaysDailyPlan(accessToken: string) {
   return apiRequest<DailyPlan>("/daily-plans/today/", { accessToken });
+}
+
+export function addTaskToDailyPlan(
+  accessToken: string,
+  date: string,
+  payload: AddDailyTaskPayload,
+) {
+  return apiRequest<DailyTask>(`/daily-plans/${date}/tasks/`, {
+    accessToken,
+    method: "POST",
+    body: payload,
+  });
+}
+
+export function completeDailyTask(accessToken: string, dailyTaskId: number) {
+  return apiRequest<DailyTask>(`/daily-plans/tasks/${dailyTaskId}/complete/`, {
+    accessToken,
+    method: "PATCH",
+  });
+}
+
+export function missDailyTask(
+  accessToken: string,
+  dailyTaskId: number,
+  payload: MissDailyTaskPayload = {},
+) {
+  return apiRequest<DailyTask>(`/daily-plans/tasks/${dailyTaskId}/miss/`, {
+    accessToken,
+    method: "PATCH",
+    body: payload,
+  });
+}
+
+export function skipDailyTask(accessToken: string, dailyTaskId: number) {
+  return apiRequest<DailyTask>(`/daily-plans/tasks/${dailyTaskId}/skip/`, {
+    accessToken,
+    method: "PATCH",
+  });
+}
+
+export function rescheduleDailyTask(
+  accessToken: string,
+  dailyTaskId: number,
+  payload: RescheduleDailyTaskPayload,
+) {
+  return apiRequest<DailyTask | RescheduledDailyTask>(
+    `/daily-plans/tasks/${dailyTaskId}/reschedule/`,
+    {
+      accessToken,
+      method: "PATCH",
+      body: payload,
+    },
+  );
 }
 
 export function getNextRecommendation(accessToken: string) {

@@ -6,7 +6,7 @@ each Codex prompt completes and review is done.
 
 **Last updated**: 2026-06-17
 **Current phase**: Phase 5 - Frontend Dashboard
-**Current prompt**: 5.2 - Dashboard page
+**Current prompt**: 5.3 - Today page
 
 ---
 
@@ -73,9 +73,9 @@ each Codex prompt completes and review is done.
 ## Phase 5 - Frontend Dashboard
 
 - [x] 5.1 - Frontend scaffold + auth
-- [ ] 5.2 - Dashboard page
+- [x] 5.2 - Dashboard page
 - [ ] 5.3 - Today page
-- [ ] 5.4 - Task management page
+- [x] 5.4 - Task management page
 - [ ] 5.5 - Streaks page
 - [x] 5b - Recommendation logic (backend)
 
@@ -84,6 +84,8 @@ each Codex prompt completes and review is done.
 - 2026-06-17: Initialized frontend foundation in `frontend/` with Next.js 14, TypeScript, Tailwind CSS, App Router, a simple check page, prepared `src/app`, `src/components`, `src/lib/api`, `src/types`, and `src/styles` structure, plus `NEXT_PUBLIC_API_BASE_URL` example. Auth UI, backend API calls, dashboard UI, frontend feature pages, and AI features were not added. Next recommended prompt: build frontend auth foundation and shared API client.
 - 2026-06-17: Added frontend API client foundation in `frontend/src/lib/api` with typed helpers for register, login, current user, categories, tasks, today's daily plan, next recommendation, streaks, discipline score, and weekly reviews. Added shared TypeScript API response types in `frontend/src/types`. Token storage, React auth context, auth pages, dashboard UI, and AI features were not added. Next recommended prompt: build frontend auth UI and token state.
 - 2026-06-17: Added frontend auth UI and token handling: `/login`, `/register`, localStorage token helpers, current-user hook, logout behavior, and a minimal protected `/dashboard` placeholder. Full dashboard widgets, task management UI, and AI features were not added. Next recommended prompt: build the dashboard page using the existing API client.
+- 2026-06-17: Replaced the protected `/dashboard` placeholder with the first real dashboard screen. It fetches current user, discipline score, next recommendation, today's daily plan, streaks, and recent weekly reviews, with responsive cards plus loading, empty, and per-section error states. Task creation, category management, weekly review generation UI, and AI features were not added. Next recommended prompt: build the Today page.
+- 2026-06-17: Added protected `/tasks` page with authenticated task list, category loading, and basic task creation for title, description, category, priority, estimated duration, due date, and repeat type. Added dashboard navigation to Tasks and a `createTask` API helper. Edit/delete task UI, daily plan scheduling UI, and AI features were not added. Next recommended prompt: build the Today page.
 
 ---
 

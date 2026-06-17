@@ -1,7 +1,9 @@
 export {
   API_BASE_URL,
   ApiError,
+  addTaskToDailyPlan,
   buildApiUrl,
+  completeDailyTask,
   createTask,
   getCurrentUser,
   getNextRecommendation,
@@ -12,5 +14,8 @@ export {
   listTasks,
   listWeeklyReviews,
   login,
+  missDailyTask,
   register,
+  rescheduleDailyTask,
+  skipDailyTask,
 } from "./client";

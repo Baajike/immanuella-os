@@ -83,6 +83,22 @@ export interface CreateTaskPayload {
   repeat_days?: number[] | null;
 }
 
+export interface AddDailyTaskPayload {
+  task_id: ApiId;
+  scheduled_start_time?: ISOTime | null;
+  scheduled_end_time?: ISOTime | null;
+}
+
+export interface MissDailyTaskPayload {
+  missed_reason?: string;
+}
+
+export interface RescheduleDailyTaskPayload {
+  scheduled_start_time: ISOTime;
+  scheduled_end_time?: ISOTime | null;
+  target_date?: ISODate;
+}
+
 export interface DailyTaskSummary {
   id: ApiId;
   title: string;
@@ -101,6 +117,11 @@ export interface DailyTask {
   missed_reason: string;
   created_at: ISODateTime;
   updated_at: ISODateTime;
+}
+
+export interface RescheduledDailyTask {
+  original: DailyTask;
+  new: DailyTask;
 }
 
 export interface DailyPlan {
