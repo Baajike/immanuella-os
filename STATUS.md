@@ -5,8 +5,8 @@ between Codex (execution) and Claude (architecture/review). Update it after
 each Codex prompt completes and review is done.
 
 **Last updated**: 2026-06-17
-**Current phase**: Phase 6 - Weekly Review
-**Current prompt**: 6.2 - Weekly review page (frontend)
+**Current phase**: Phase 5 - Frontend Dashboard
+**Current prompt**: 5.1 - Frontend auth/API client setup
 
 ---
 
@@ -81,6 +81,7 @@ each Codex prompt completes and review is done.
 
 **Notes**:
 - 2026-06-17: Added authenticated rule-based recommendation endpoint at `/api/v1/recommendations/next/`, scoped to today's plan and `request.user`, with ordering for missed tasks, priority, scheduled time, and stable tie-breakers. Frontend, AI, weekly review, and Never Miss Twice warning were not added. Next recommended prompt: implement Never Miss Twice warning before weekly review.
+- 2026-06-17: Initialized frontend foundation in `frontend/` with Next.js 14, TypeScript, Tailwind CSS, App Router, a simple check page, prepared `src/app`, `src/components`, `src/lib/api`, `src/types`, and `src/styles` structure, plus `NEXT_PUBLIC_API_BASE_URL` example. Auth UI, backend API calls, dashboard UI, frontend feature pages, and AI features were not added. Next recommended prompt: build frontend auth foundation and shared API client.
 
 ---
 

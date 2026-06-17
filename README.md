@@ -52,6 +52,48 @@ The backend will run at `http://127.0.0.1:8000/`.
 
 The frontend local dev origin `http://localhost:3000` is already allowed by CORS.
 
+## Frontend Setup
+
+The frontend is a Next.js app in `frontend/` using TypeScript, Tailwind CSS, and the App Router.
+
+### 1. Install dependencies
+
+```powershell
+cd frontend
+npm install
+```
+
+If PowerShell blocks the `npm` shim on Windows, use:
+
+```powershell
+npm.cmd install
+```
+
+### 2. Create your environment file
+
+Copy `frontend/.env.example` to `frontend/.env.local`.
+
+```text
+NEXT_PUBLIC_API_BASE_URL=http://127.0.0.1:8000/api/v1
+```
+
+The frontend scaffold does not call the backend yet; this value is prepared for the API client in the next phase.
+
+### 3. Start the frontend server
+
+```powershell
+npm run dev
+```
+
+The frontend will run at `http://localhost:3000/`.
+
+### 4. Optional checks
+
+```powershell
+npm run lint
+npm run build
+```
+
 ## Auth Endpoints
 
 Authentication endpoints live under `/api/v1/auth/`.
