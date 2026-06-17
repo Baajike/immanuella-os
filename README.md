@@ -85,3 +85,45 @@ Fetch the current user with the returned access token:
 curl http://127.0.0.1:8000/api/v1/auth/me/ `
   -H "Authorization: Bearer YOUR_ACCESS_TOKEN"
 ```
+
+## Category API
+
+Category endpoints live under `/api/v1/categories/` and require a JWT access token.
+
+- `GET /api/v1/categories/`
+- `POST /api/v1/categories/`
+- `GET /api/v1/categories/{id}/`
+- `PATCH /api/v1/categories/{id}/`
+- `DELETE /api/v1/categories/{id}/`
+
+Create a category:
+
+```powershell
+curl -X POST http://127.0.0.1:8000/api/v1/categories/ `
+  -H "Authorization: Bearer YOUR_ACCESS_TOKEN" `
+  -H "Content-Type: application/json" `
+  -d "{\"name\":\"Spanish\",\"color\":\"#10B981\",\"icon\":\"language\"}"
+```
+
+List your categories:
+
+```powershell
+curl http://127.0.0.1:8000/api/v1/categories/ `
+  -H "Authorization: Bearer YOUR_ACCESS_TOKEN"
+```
+
+Update a category:
+
+```powershell
+curl -X PATCH http://127.0.0.1:8000/api/v1/categories/1/ `
+  -H "Authorization: Bearer YOUR_ACCESS_TOKEN" `
+  -H "Content-Type: application/json" `
+  -d "{\"color\":\"#22C55E\"}"
+```
+
+Delete a category:
+
+```powershell
+curl -X DELETE http://127.0.0.1:8000/api/v1/categories/1/ `
+  -H "Authorization: Bearer YOUR_ACCESS_TOKEN"
+```

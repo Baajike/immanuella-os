@@ -6,7 +6,7 @@ each Codex prompt completes and review is done.
 
 **Last updated**: 2026-06-17
 **Current phase**: Phase 2 - Task System
-**Current prompt**: 2.1 - Category API + default categories on signup
+**Current prompt**: 2.1 follow-up - default categories on signup
 
 ---
 
@@ -41,7 +41,7 @@ each Codex prompt completes and review is done.
 
 **Notes**:
 - 2026-06-17: Added MVP database models in `core` only: Category, Task, DailyPlan, DailyTask, Streak, and WeeklyReview. Created and applied `core.0001_initial`. No serializers, API endpoints, frontend, or AI features were added.
-- 2026-06-17: Next recommended prompt: add Category API and default categories on signup.
+- 2026-06-17: Added authenticated Category API at `/api/v1/categories/`, scoped to `request.user`, with create/list/update/delete tests. Default categories on signup are still pending. Next recommended prompt: add default category creation on registration, then continue to Task API.
 
 ---
 

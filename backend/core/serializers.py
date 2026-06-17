@@ -3,6 +3,8 @@ from rest_framework import serializers
 from rest_framework.exceptions import AuthenticationFailed
 from rest_framework_simplejwt.serializers import TokenObtainPairSerializer
 
+from .models import Category
+
 
 User = get_user_model()
 
@@ -66,3 +68,10 @@ class EmailTokenObtainPairSerializer(TokenObtainPairSerializer):
             "refresh": str(refresh),
             "access": str(refresh.access_token),
         }
+
+
+class CategorySerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Category
+        fields = ["id", "name", "color", "icon", "created_at", "updated_at"]
+        read_only_fields = ["id", "created_at", "updated_at"]
