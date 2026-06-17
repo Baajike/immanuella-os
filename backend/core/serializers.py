@@ -153,6 +153,36 @@ class DailyTaskSerializer(serializers.ModelSerializer):
         read_only_fields = fields
 
 
+class RecommendationTaskSerializer(serializers.ModelSerializer):
+    category = TaskCategorySerializer(read_only=True)
+
+    class Meta:
+        model = Task
+        fields = [
+            "id",
+            "title",
+            "category",
+            "priority",
+            "estimated_duration_minutes",
+            "due_date",
+        ]
+
+
+class RecommendationDailyTaskSerializer(serializers.ModelSerializer):
+    task = RecommendationTaskSerializer(read_only=True)
+
+    class Meta:
+        model = DailyTask
+        fields = [
+            "id",
+            "task",
+            "scheduled_start_time",
+            "scheduled_end_time",
+            "status",
+            "created_at",
+        ]
+
+
 class StreakSerializer(serializers.ModelSerializer):
     category = TaskCategorySerializer(read_only=True)
 

@@ -14,11 +14,13 @@ from .serializers import (
     DailyTaskSerializer,
     EmailTokenObtainPairSerializer,
     MissDailyTaskSerializer,
+    RecommendationDailyTaskSerializer,
     RegisterSerializer,
     RescheduleDailyTaskSerializer,
     StreakSerializer,
     TaskSerializer,
 )
+from .recommendations import get_next_daily_task_recommendation
 from .services import apply_daily_task_status
 
 
@@ -281,5 +283,27 @@ class TodayDisciplineScoreView(APIView):
             {
                 "date": plan.date,
                 "discipline_score": plan.discipline_score,
+            }
+        )
+
+
+class NextRecommendationView(APIView):
+    permission_classes = [permissions.IsAuthenticated]
+
+    def get(self, request):
+        recommendation = get_next_daily_task_recommendation(request.user)
+        daily_task = recommendation["recommended_task"]
+
+        return Response(
+            {
+                "recommended_task": (
+                    RecommendationDailyTaskSerializer(daily_task).data
+                    if daily_task is not None
+                    else None
+                ),
+                "reason": recommendation["reason"],
+                "message": recommendation["message"],
+                "current_time": recommendation["current_time"],
+                "date": recommendation["date"],
             }
         )

@@ -76,9 +76,10 @@ each Codex prompt completes and review is done.
 - [ ] 5.3 - Today page
 - [ ] 5.4 - Task management page
 - [ ] 5.5 - Streaks page
-- [ ] 5b - Recommendation logic (backend)
+- [x] 5b - Recommendation logic (backend)
 
 **Notes**:
+- 2026-06-17: Added authenticated rule-based recommendation endpoint at `/api/v1/recommendations/next/`, scoped to today's plan and `request.user`, with ordering for missed tasks, priority, scheduled time, and stable tie-breakers. Frontend, AI, weekly review, and Never Miss Twice warning were not added. Next recommended prompt: implement Never Miss Twice warning before weekly review.
 
 ---
 

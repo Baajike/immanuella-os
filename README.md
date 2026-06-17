@@ -261,3 +261,18 @@ Get today's discipline score:
 curl http://127.0.0.1:8000/api/v1/discipline-score/today/ `
   -H "Authorization: Bearer YOUR_ACCESS_TOKEN"
 ```
+
+## Recommendation API
+
+The rule-based next-task recommendation endpoint requires a JWT access token.
+
+- `GET /api/v1/recommendations/next/`
+
+Get the recommended next daily task:
+
+```powershell
+curl http://127.0.0.1:8000/api/v1/recommendations/next/ `
+  -H "Authorization: Bearer YOUR_ACCESS_TOKEN"
+```
+
+The response includes `recommended_task`, `reason`, `message`, `current_time`, and `date`. If today's plan does not exist, or if there are no pending or missed daily tasks, `recommended_task` is `null`.

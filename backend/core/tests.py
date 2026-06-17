@@ -1,4 +1,5 @@
-from datetime import date
+from datetime import date, datetime, time
+from unittest.mock import patch
 
 from django.contrib.auth import get_user_model
 from django.test import override_settings
@@ -833,3 +834,190 @@ class StreakAndDisciplineScoreTests(APITestCase):
         self.task.save(update_fields=["priority", "updated_at"])
         plan = DailyPlan.objects.create(user=self.user, date=plan_date)
         return DailyTask.objects.create(daily_plan=plan, task=self.task)
+
+
+class RecommendationEndpointTests(APITestCase):
+    def setUp(self):
+        self.user = User.objects.create_user(
+            username="immanuella@example.com",
+            email="immanuella@example.com",
+            password="StrongPassword123",
+            first_name="Immanuella",
+        )
+        self.other_user = User.objects.create_user(
+            username="other@example.com",
+            email="other@example.com",
+            password="StrongPassword123",
+            first_name="Other",
+        )
+        self.category = Category.objects.create(
+            user=self.user,
+            name="Backend Custom",
+            color="#3B82F6",
+            icon="code",
+        )
+        self.other_category = Category.objects.create(
+            user=self.other_user,
+            name="Other Category",
+            color="#EF4444",
+            icon="shield",
+        )
+
+    def test_unauthenticated_users_cannot_access_recommendation_endpoint(self):
+        response = self.client.get(reverse("recommendation-next"))
+
+        self.assertEqual(response.status_code, status.HTTP_401_UNAUTHORIZED)
+
+    def test_user_with_no_daily_plan_gets_empty_recommendation_response(self):
+        self.client.force_authenticate(user=self.user)
+
+        response = self.client.get(reverse("recommendation-next"))
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertIsNone(response.data["recommended_task"])
+        self.assertIn("No daily plan", response.data["reason"])
+        self.assertIn("message", response.data)
+
+    def test_user_with_no_pending_or_missed_tasks_gets_empty_recommendation_response(self):
+        self.client.force_authenticate(user=self.user)
+        self.create_daily_task(status=DailyTask.Status.COMPLETED)
+
+        response = self.client.get(reverse("recommendation-next"))
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertIsNone(response.data["recommended_task"])
+        self.assertIn("no pending or missed", response.data["reason"].lower())
+
+    def test_missed_tasks_are_recommended_before_pending_tasks(self):
+        self.client.force_authenticate(user=self.user)
+        pending_task = self.create_daily_task(
+            title="Pending critical task",
+            priority=Task.Priority.CRITICAL,
+            status=DailyTask.Status.PENDING,
+        )
+        missed_task = self.create_daily_task(
+            title="Missed low task",
+            priority=Task.Priority.LOW,
+            status=DailyTask.Status.MISSED,
+        )
+
+        response = self.client.get(reverse("recommendation-next"))
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(response.data["recommended_task"]["id"], missed_task.id)
+        self.assertNotEqual(response.data["recommended_task"]["id"], pending_task.id)
+
+    def test_high_priority_task_is_recommended_before_low_priority_task(self):
+        self.client.force_authenticate(user=self.user)
+        low_task = self.create_daily_task(
+            title="Low priority task",
+            priority=Task.Priority.LOW,
+        )
+        high_task = self.create_daily_task(
+            title="High priority task",
+            priority=Task.Priority.HIGH,
+        )
+
+        response = self.client.get(reverse("recommendation-next"))
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(response.data["recommended_task"]["id"], high_task.id)
+        self.assertNotEqual(response.data["recommended_task"]["id"], low_task.id)
+
+    def test_due_scheduled_task_is_recommended_before_later_scheduled_task(self):
+        self.client.force_authenticate(user=self.user)
+        current_datetime = datetime(2026, 6, 17, 12, 0, tzinfo=timezone.get_current_timezone())
+        due_task = self.create_daily_task(
+            title="Due scheduled task",
+            priority=Task.Priority.NORMAL,
+            scheduled_start_time=time(11, 0),
+        )
+        later_task = self.create_daily_task(
+            title="Later scheduled task",
+            priority=Task.Priority.NORMAL,
+            scheduled_start_time=time(15, 0),
+        )
+
+        with patch("core.recommendations.timezone.localtime", return_value=current_datetime):
+            response = self.client.get(reverse("recommendation-next"))
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(response.data["recommended_task"]["id"], due_task.id)
+        self.assertNotEqual(response.data["recommended_task"]["id"], later_task.id)
+
+    def test_user_never_receives_another_users_daily_task(self):
+        self.client.force_authenticate(user=self.user)
+        own_task = self.create_daily_task(
+            title="Own low task",
+            priority=Task.Priority.LOW,
+        )
+        self.create_daily_task(
+            user=self.other_user,
+            category=self.other_category,
+            title="Other missed critical task",
+            priority=Task.Priority.CRITICAL,
+            status=DailyTask.Status.MISSED,
+        )
+
+        response = self.client.get(reverse("recommendation-next"))
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(response.data["recommended_task"]["id"], own_task.id)
+        self.assertEqual(response.data["recommended_task"]["task"]["title"], "Own low task")
+
+    def test_endpoint_returns_expected_response_shape(self):
+        self.client.force_authenticate(user=self.user)
+        self.create_daily_task(title="Shape task", priority=Task.Priority.HIGH)
+
+        response = self.client.get(reverse("recommendation-next"))
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(
+            set(response.data.keys()),
+            {"recommended_task", "reason", "message", "current_time", "date"},
+        )
+        self.assertEqual(
+            set(response.data["recommended_task"].keys()),
+            {
+                "id",
+                "task",
+                "scheduled_start_time",
+                "scheduled_end_time",
+                "status",
+                "created_at",
+            },
+        )
+        self.assertIn("title", response.data["recommended_task"]["task"])
+        self.assertIn("priority", response.data["recommended_task"]["task"])
+
+    def create_daily_task(
+        self,
+        user=None,
+        category=None,
+        title="Backend study session",
+        priority=Task.Priority.NORMAL,
+        status=DailyTask.Status.PENDING,
+        scheduled_start_time=None,
+    ):
+        if user is None:
+            user = self.user
+        if category is None:
+            category = self.category if user == self.user else self.other_category
+
+        plan, _ = DailyPlan.objects.get_or_create(
+            user=user,
+            date=timezone.localdate(),
+            defaults={"discipline_score": 100},
+        )
+        task = Task.objects.create(
+            user=user,
+            category=category,
+            title=title,
+            priority=priority,
+        )
+        return DailyTask.objects.create(
+            daily_plan=plan,
+            task=task,
+            status=status,
+            scheduled_start_time=scheduled_start_time,
+        )
