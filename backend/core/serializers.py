@@ -3,6 +3,7 @@ from rest_framework import serializers
 from rest_framework.exceptions import AuthenticationFailed
 from rest_framework_simplejwt.serializers import TokenObtainPairSerializer
 
+from .defaults import create_default_categories_for_user
 from .models import Category
 
 
@@ -33,6 +34,7 @@ class RegisterSerializer(serializers.ModelSerializer):
         )
         user.set_password(password)
         user.save()
+        create_default_categories_for_user(user)
         return user
 
 

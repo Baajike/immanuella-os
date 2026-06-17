@@ -4,6 +4,7 @@ from django.urls import reverse
 from rest_framework import status
 from rest_framework.test import APITestCase
 
+from .defaults import DEFAULT_CATEGORIES, create_default_categories_for_user
 from .models import Category
 
 
@@ -33,6 +34,100 @@ class AuthEndpointTests(APITestCase):
         self.assertEqual(response.data["name"], "Immanuella")
         self.assertNotIn("password", response.data)
         self.assertTrue(User.objects.filter(email="immanuella@example.com").exists())
+
+    def test_registration_creates_default_categories(self):
+        response = self.client.post(
+            reverse("auth-register"),
+            {
+                "email": "immanuella@example.com",
+                "password": "StrongPassword123",
+                "name": "Immanuella",
+            },
+            format="json",
+        )
+
+        self.assertEqual(response.status_code, status.HTTP_201_CREATED)
+        user = User.objects.get(email="immanuella@example.com")
+        self.assertEqual(user.categories.count(), len(DEFAULT_CATEGORIES))
+        self.assertEqual(
+            set(user.categories.values_list("name", flat=True)),
+            {category["name"] for category in DEFAULT_CATEGORIES},
+        )
+
+    def test_each_new_user_gets_their_own_default_categories(self):
+        first_response = self.client.post(
+            reverse("auth-register"),
+            {
+                "email": "immanuella@example.com",
+                "password": "StrongPassword123",
+                "name": "Immanuella",
+            },
+            format="json",
+        )
+        second_response = self.client.post(
+            reverse("auth-register"),
+            {
+                "email": "ama@example.com",
+                "password": "StrongPassword123",
+                "name": "Ama",
+            },
+            format="json",
+        )
+
+        self.assertEqual(first_response.status_code, status.HTTP_201_CREATED)
+        self.assertEqual(second_response.status_code, status.HTTP_201_CREATED)
+        first_user = User.objects.get(email="immanuella@example.com")
+        second_user = User.objects.get(email="ama@example.com")
+        self.assertEqual(first_user.categories.count(), len(DEFAULT_CATEGORIES))
+        self.assertEqual(second_user.categories.count(), len(DEFAULT_CATEGORIES))
+        self.assertEqual(
+            set(first_user.categories.values_list("name", flat=True)),
+            set(second_user.categories.values_list("name", flat=True)),
+        )
+
+    def test_default_categories_are_not_shared_between_users(self):
+        self.client.post(
+            reverse("auth-register"),
+            {
+                "email": "immanuella@example.com",
+                "password": "StrongPassword123",
+                "name": "Immanuella",
+            },
+            format="json",
+        )
+        self.client.post(
+            reverse("auth-register"),
+            {
+                "email": "ama@example.com",
+                "password": "StrongPassword123",
+                "name": "Ama",
+            },
+            format="json",
+        )
+
+        first_user = User.objects.get(email="immanuella@example.com")
+        second_user = User.objects.get(email="ama@example.com")
+        first_category_ids = set(first_user.categories.values_list("id", flat=True))
+        second_category_ids = set(second_user.categories.values_list("id", flat=True))
+
+        self.assertEqual(first_category_ids & second_category_ids, set())
+
+    def test_default_category_creation_is_idempotent_for_user(self):
+        response = self.client.post(
+            reverse("auth-register"),
+            {
+                "email": "immanuella@example.com",
+                "password": "StrongPassword123",
+                "name": "Immanuella",
+            },
+            format="json",
+        )
+
+        self.assertEqual(response.status_code, status.HTTP_201_CREATED)
+        user = User.objects.get(email="immanuella@example.com")
+        create_default_categories_for_user(user)
+
+        self.assertEqual(user.categories.count(), len(DEFAULT_CATEGORIES))
 
     def test_current_user_requires_authentication(self):
         response = self.client.get(reverse("auth-me"))
