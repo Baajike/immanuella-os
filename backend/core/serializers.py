@@ -4,7 +4,7 @@ from rest_framework.exceptions import AuthenticationFailed
 from rest_framework_simplejwt.serializers import TokenObtainPairSerializer
 
 from .defaults import create_default_categories_for_user
-from .models import Category, Task
+from .models import Category, DailyPlan, DailyTask, Task
 
 
 User = get_user_model()
@@ -124,3 +124,69 @@ class TaskSerializer(serializers.ModelSerializer):
             else None
         )
         return data
+
+
+class DailyTaskSummarySerializer(serializers.ModelSerializer):
+    category = TaskCategorySerializer(read_only=True)
+
+    class Meta:
+        model = Task
+        fields = ["id", "title", "category", "priority", "estimated_duration_minutes"]
+
+
+class DailyTaskSerializer(serializers.ModelSerializer):
+    task = DailyTaskSummarySerializer(read_only=True)
+
+    class Meta:
+        model = DailyTask
+        fields = [
+            "id",
+            "task",
+            "scheduled_start_time",
+            "scheduled_end_time",
+            "status",
+            "completed_at",
+            "missed_reason",
+            "created_at",
+            "updated_at",
+        ]
+        read_only_fields = fields
+
+
+class DailyPlanSerializer(serializers.ModelSerializer):
+    daily_tasks = DailyTaskSerializer(many=True, read_only=True)
+
+    class Meta:
+        model = DailyPlan
+        fields = [
+            "id",
+            "date",
+            "discipline_score",
+            "notes",
+            "daily_tasks",
+            "created_at",
+            "updated_at",
+        ]
+        read_only_fields = ["id", "discipline_score", "daily_tasks", "created_at", "updated_at"]
+
+
+class AddDailyTaskSerializer(serializers.Serializer):
+    task_id = serializers.IntegerField()
+    scheduled_start_time = serializers.TimeField(required=False, allow_null=True)
+    scheduled_end_time = serializers.TimeField(required=False, allow_null=True)
+
+    def validate_task_id(self, value):
+        request = self.context["request"]
+        if not Task.objects.filter(id=value, user=request.user).exists():
+            raise serializers.ValidationError("Task does not exist.")
+        return value
+
+
+class MissDailyTaskSerializer(serializers.Serializer):
+    missed_reason = serializers.CharField(required=False, allow_blank=True, max_length=255)
+
+
+class RescheduleDailyTaskSerializer(serializers.Serializer):
+    scheduled_start_time = serializers.TimeField(required=True)
+    scheduled_end_time = serializers.TimeField(required=False, allow_null=True)
+    target_date = serializers.DateField(required=False)

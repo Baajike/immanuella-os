@@ -173,3 +173,70 @@ Delete a task:
 curl -X DELETE http://127.0.0.1:8000/api/v1/tasks/1/ `
   -H "Authorization: Bearer YOUR_ACCESS_TOKEN"
 ```
+
+## Daily Plan API
+
+Daily plan endpoints live under `/api/v1/daily-plans/` and require a JWT access token.
+
+- `GET /api/v1/daily-plans/today/`
+- `GET /api/v1/daily-plans/{date}/`
+- `POST /api/v1/daily-plans/{date}/tasks/`
+- `PATCH /api/v1/daily-plans/tasks/{daily_task_id}/complete/`
+- `PATCH /api/v1/daily-plans/tasks/{daily_task_id}/miss/`
+- `PATCH /api/v1/daily-plans/tasks/{daily_task_id}/reschedule/`
+- `PATCH /api/v1/daily-plans/tasks/{daily_task_id}/skip/`
+
+Get or create today's plan:
+
+```powershell
+curl http://127.0.0.1:8000/api/v1/daily-plans/today/ `
+  -H "Authorization: Bearer YOUR_ACCESS_TOKEN"
+```
+
+Get a plan by date:
+
+```powershell
+curl http://127.0.0.1:8000/api/v1/daily-plans/2026-06-20/ `
+  -H "Authorization: Bearer YOUR_ACCESS_TOKEN"
+```
+
+Add an existing task to a plan:
+
+```powershell
+curl -X POST http://127.0.0.1:8000/api/v1/daily-plans/2026-06-20/tasks/ `
+  -H "Authorization: Bearer YOUR_ACCESS_TOKEN" `
+  -H "Content-Type: application/json" `
+  -d "{\"task_id\":1,\"scheduled_start_time\":\"19:00:00\",\"scheduled_end_time\":\"20:00:00\"}"
+```
+
+Mark a daily task completed:
+
+```powershell
+curl -X PATCH http://127.0.0.1:8000/api/v1/daily-plans/tasks/1/complete/ `
+  -H "Authorization: Bearer YOUR_ACCESS_TOKEN"
+```
+
+Mark a daily task missed:
+
+```powershell
+curl -X PATCH http://127.0.0.1:8000/api/v1/daily-plans/tasks/1/miss/ `
+  -H "Authorization: Bearer YOUR_ACCESS_TOKEN" `
+  -H "Content-Type: application/json" `
+  -d "{\"missed_reason\":\"Ran out of time\"}"
+```
+
+Reschedule a daily task:
+
+```powershell
+curl -X PATCH http://127.0.0.1:8000/api/v1/daily-plans/tasks/1/reschedule/ `
+  -H "Authorization: Bearer YOUR_ACCESS_TOKEN" `
+  -H "Content-Type: application/json" `
+  -d "{\"scheduled_start_time\":\"21:00:00\",\"scheduled_end_time\":\"21:30:00\",\"target_date\":\"2026-06-21\"}"
+```
+
+Skip a daily task:
+
+```powershell
+curl -X PATCH http://127.0.0.1:8000/api/v1/daily-plans/tasks/1/skip/ `
+  -H "Authorization: Bearer YOUR_ACCESS_TOKEN"
+```

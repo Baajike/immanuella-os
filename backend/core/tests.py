@@ -2,12 +2,13 @@ from datetime import date
 
 from django.contrib.auth import get_user_model
 from django.test import override_settings
+from django.utils import timezone
 from django.urls import reverse
 from rest_framework import status
 from rest_framework.test import APITestCase
 
 from .defaults import DEFAULT_CATEGORIES, create_default_categories_for_user
-from .models import Category, Task
+from .models import Category, DailyPlan, DailyTask, Task
 
 
 User = get_user_model()
@@ -486,3 +487,180 @@ class TaskEndpointTests(APITestCase):
         self.assertIn("category", response.data)
         task.refresh_from_db()
         self.assertEqual(task.category, self.category)
+
+
+class DailyPlanEndpointTests(APITestCase):
+    def setUp(self):
+        self.user = User.objects.create_user(
+            username="immanuella@example.com",
+            email="immanuella@example.com",
+            password="StrongPassword123",
+            first_name="Immanuella",
+        )
+        self.other_user = User.objects.create_user(
+            username="other@example.com",
+            email="other@example.com",
+            password="StrongPassword123",
+            first_name="Other",
+        )
+        self.category = Category.objects.create(
+            user=self.user,
+            name="Backend Custom",
+            color="#3B82F6",
+            icon="code",
+        )
+        self.other_category = Category.objects.create(
+            user=self.other_user,
+            name="Other Category",
+            color="#EF4444",
+            icon="shield",
+        )
+        self.task = Task.objects.create(
+            user=self.user,
+            category=self.category,
+            title="Backend study session",
+            priority="high",
+        )
+        self.other_task = Task.objects.create(
+            user=self.other_user,
+            category=self.other_category,
+            title="Other user task",
+            priority="normal",
+        )
+
+    def test_unauthenticated_users_cannot_access_daily_plan_endpoints(self):
+        response = self.client.get(reverse("daily-plan-today"))
+
+        self.assertEqual(response.status_code, status.HTTP_401_UNAUTHORIZED)
+
+    def test_authenticated_user_can_get_or_create_todays_plan(self):
+        self.client.force_authenticate(user=self.user)
+
+        response = self.client.get(reverse("daily-plan-today"))
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(response.data["date"], str(timezone.localdate()))
+        self.assertTrue(
+            DailyPlan.objects.filter(user=self.user, date=timezone.localdate()).exists()
+        )
+
+    def test_authenticated_user_can_get_plan_by_date(self):
+        self.client.force_authenticate(user=self.user)
+        plan = DailyPlan.objects.create(user=self.user, date=date(2026, 6, 20))
+
+        response = self.client.get(reverse("daily-plan-detail", args=["2026-06-20"]))
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(response.data["id"], plan.id)
+        self.assertEqual(response.data["date"], "2026-06-20")
+
+    def test_user_cannot_access_another_users_daily_plan(self):
+        self.client.force_authenticate(user=self.user)
+        DailyPlan.objects.create(user=self.other_user, date=date(2026, 6, 20))
+
+        response = self.client.get(reverse("daily-plan-detail", args=["2026-06-20"]))
+
+        self.assertEqual(response.status_code, status.HTTP_404_NOT_FOUND)
+
+    def test_user_can_add_their_own_task_to_daily_plan(self):
+        self.client.force_authenticate(user=self.user)
+
+        response = self.client.post(
+            reverse("daily-plan-add-task", args=["2026-06-20"]),
+            {
+                "task_id": self.task.id,
+                "scheduled_start_time": "19:00:00",
+                "scheduled_end_time": "20:00:00",
+            },
+            format="json",
+        )
+
+        self.assertEqual(response.status_code, status.HTTP_201_CREATED)
+        daily_task = DailyTask.objects.get(id=response.data["id"])
+        self.assertEqual(daily_task.daily_plan.user, self.user)
+        self.assertEqual(daily_task.daily_plan.date, date(2026, 6, 20))
+        self.assertEqual(daily_task.task, self.task)
+        self.assertEqual(daily_task.status, DailyTask.Status.PENDING)
+
+    def test_user_cannot_add_another_users_task_to_their_daily_plan(self):
+        self.client.force_authenticate(user=self.user)
+
+        response = self.client.post(
+            reverse("daily-plan-add-task", args=["2026-06-20"]),
+            {"task_id": self.other_task.id},
+            format="json",
+        )
+
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertIn("task_id", response.data)
+        self.assertFalse(
+            DailyTask.objects.filter(task=self.other_task, daily_plan__user=self.user).exists()
+        )
+
+    def test_user_can_mark_daily_task_completed(self):
+        self.client.force_authenticate(user=self.user)
+        daily_task = self.create_daily_task()
+
+        response = self.client.patch(reverse("daily-task-complete", args=[daily_task.id]))
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        daily_task.refresh_from_db()
+        self.assertEqual(daily_task.status, DailyTask.Status.COMPLETED)
+        self.assertIsNotNone(daily_task.completed_at)
+
+    def test_user_can_mark_daily_task_missed(self):
+        self.client.force_authenticate(user=self.user)
+        daily_task = self.create_daily_task()
+
+        response = self.client.patch(
+            reverse("daily-task-miss", args=[daily_task.id]),
+            {"missed_reason": "Ran out of time"},
+            format="json",
+        )
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        daily_task.refresh_from_db()
+        self.assertEqual(daily_task.status, DailyTask.Status.MISSED)
+        self.assertEqual(daily_task.missed_reason, "Ran out of time")
+
+    def test_user_can_reschedule_daily_task(self):
+        self.client.force_authenticate(user=self.user)
+        daily_task = self.create_daily_task()
+
+        response = self.client.patch(
+            reverse("daily-task-reschedule", args=[daily_task.id]),
+            {
+                "scheduled_start_time": "21:00:00",
+                "scheduled_end_time": "21:30:00",
+                "target_date": "2026-06-21",
+            },
+            format="json",
+        )
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        daily_task.refresh_from_db()
+        self.assertEqual(daily_task.status, DailyTask.Status.RESCHEDULED)
+        self.assertEqual(response.data["original"]["id"], daily_task.id)
+        self.assertEqual(response.data["new"]["status"], DailyTask.Status.PENDING)
+        self.assertTrue(
+            DailyTask.objects.filter(
+                daily_plan__user=self.user,
+                daily_plan__date=date(2026, 6, 21),
+                task=self.task,
+                scheduled_start_time="21:00:00",
+            ).exists()
+        )
+
+    def test_user_can_skip_daily_task(self):
+        self.client.force_authenticate(user=self.user)
+        daily_task = self.create_daily_task()
+
+        response = self.client.patch(reverse("daily-task-skip", args=[daily_task.id]))
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        daily_task.refresh_from_db()
+        self.assertEqual(daily_task.status, DailyTask.Status.SKIPPED)
+
+    def create_daily_task(self):
+        plan = DailyPlan.objects.create(user=self.user, date=date(2026, 6, 20))
+        return DailyTask.objects.create(daily_plan=plan, task=self.task)

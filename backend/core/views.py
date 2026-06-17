@@ -1,12 +1,21 @@
-from rest_framework import generics, permissions, viewsets
+from django.utils import timezone
+from django.utils.dateparse import parse_date
+from rest_framework import generics, permissions, status, viewsets
+from rest_framework.response import Response
+from rest_framework.views import APIView
 from rest_framework_simplejwt.views import TokenObtainPairView
 
-from .models import Category, Task
+from .models import Category, DailyPlan, DailyTask, Task
 from .serializers import (
+    AddDailyTaskSerializer,
     CategorySerializer,
     CurrentUserSerializer,
+    DailyPlanSerializer,
+    DailyTaskSerializer,
     EmailTokenObtainPairSerializer,
+    MissDailyTaskSerializer,
     RegisterSerializer,
+    RescheduleDailyTaskSerializer,
     TaskSerializer,
 )
 
@@ -73,3 +82,176 @@ class TaskViewSet(viewsets.ModelViewSet):
 
     def perform_create(self, serializer):
         serializer.save(user=self.request.user)
+
+
+class DailyPlanBaseView(APIView):
+    permission_classes = [permissions.IsAuthenticated]
+
+    def get_plan(self, date_value):
+        return (
+            DailyPlan.objects.prefetch_related(
+                "daily_tasks__task__category",
+            )
+            .filter(user=self.request.user, date=date_value)
+            .first()
+        )
+
+    def parse_date_or_400(self, date_string):
+        date_value = parse_date(date_string)
+        if date_value is None:
+            return None, Response(
+                {"date": ["Enter a valid date in YYYY-MM-DD format."]},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+        return date_value, None
+
+
+class TodayDailyPlanView(DailyPlanBaseView):
+    def get(self, request):
+        plan, _ = DailyPlan.objects.get_or_create(
+            user=request.user,
+            date=timezone.localdate(),
+            defaults={"discipline_score": 100},
+        )
+        plan = self.get_plan(plan.date)
+        return Response(DailyPlanSerializer(plan).data)
+
+
+class DailyPlanByDateView(DailyPlanBaseView):
+    def get(self, request, date):
+        date_value, error = self.parse_date_or_400(date)
+        if error:
+            return error
+
+        plan = self.get_plan(date_value)
+        if plan is None:
+            return Response({"detail": "Not found."}, status=status.HTTP_404_NOT_FOUND)
+        return Response(DailyPlanSerializer(plan).data)
+
+
+class AddDailyTaskView(DailyPlanBaseView):
+    def post(self, request, date):
+        date_value, error = self.parse_date_or_400(date)
+        if error:
+            return error
+
+        serializer = AddDailyTaskSerializer(
+            data=request.data,
+            context={"request": request},
+        )
+        serializer.is_valid(raise_exception=True)
+        plan, _ = DailyPlan.objects.get_or_create(
+            user=request.user,
+            date=date_value,
+            defaults={"discipline_score": 100},
+        )
+        task = Task.objects.get(id=serializer.validated_data["task_id"], user=request.user)
+        daily_task, created = DailyTask.objects.get_or_create(
+            daily_plan=plan,
+            task=task,
+            scheduled_start_time=serializer.validated_data.get("scheduled_start_time"),
+            defaults={
+                "scheduled_end_time": serializer.validated_data.get("scheduled_end_time"),
+                "status": DailyTask.Status.PENDING,
+            },
+        )
+        if not created and "scheduled_end_time" in serializer.validated_data:
+            daily_task.scheduled_end_time = serializer.validated_data.get("scheduled_end_time")
+            daily_task.save(update_fields=["scheduled_end_time", "updated_at"])
+
+        return Response(
+            DailyTaskSerializer(daily_task).data,
+            status=status.HTTP_201_CREATED if created else status.HTTP_200_OK,
+        )
+
+
+class DailyTaskActionBaseView(APIView):
+    permission_classes = [permissions.IsAuthenticated]
+
+    def get_daily_task(self, daily_task_id):
+        return (
+            DailyTask.objects.select_related("daily_plan", "task", "task__category")
+            .filter(id=daily_task_id, daily_plan__user=self.request.user)
+            .first()
+        )
+
+
+class CompleteDailyTaskView(DailyTaskActionBaseView):
+    def patch(self, request, daily_task_id):
+        daily_task = self.get_daily_task(daily_task_id)
+        if daily_task is None:
+            return Response({"detail": "Not found."}, status=status.HTTP_404_NOT_FOUND)
+
+        daily_task.status = DailyTask.Status.COMPLETED
+        daily_task.completed_at = timezone.now()
+        daily_task.save(update_fields=["status", "completed_at", "updated_at"])
+        return Response(DailyTaskSerializer(daily_task).data)
+
+
+class MissDailyTaskView(DailyTaskActionBaseView):
+    def patch(self, request, daily_task_id):
+        daily_task = self.get_daily_task(daily_task_id)
+        if daily_task is None:
+            return Response({"detail": "Not found."}, status=status.HTTP_404_NOT_FOUND)
+
+        serializer = MissDailyTaskSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        daily_task.status = DailyTask.Status.MISSED
+        daily_task.missed_reason = serializer.validated_data.get("missed_reason", "")
+        daily_task.save(update_fields=["status", "missed_reason", "updated_at"])
+        return Response(DailyTaskSerializer(daily_task).data)
+
+
+class SkipDailyTaskView(DailyTaskActionBaseView):
+    def patch(self, request, daily_task_id):
+        daily_task = self.get_daily_task(daily_task_id)
+        if daily_task is None:
+            return Response({"detail": "Not found."}, status=status.HTTP_404_NOT_FOUND)
+
+        daily_task.status = DailyTask.Status.SKIPPED
+        daily_task.save(update_fields=["status", "updated_at"])
+        return Response(DailyTaskSerializer(daily_task).data)
+
+
+class RescheduleDailyTaskView(DailyTaskActionBaseView):
+    def patch(self, request, daily_task_id):
+        daily_task = self.get_daily_task(daily_task_id)
+        if daily_task is None:
+            return Response({"detail": "Not found."}, status=status.HTTP_404_NOT_FOUND)
+
+        serializer = RescheduleDailyTaskSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        target_date = serializer.validated_data.get("target_date", daily_task.daily_plan.date)
+        scheduled_start_time = serializer.validated_data["scheduled_start_time"]
+        scheduled_end_time = serializer.validated_data.get("scheduled_end_time")
+
+        if target_date == daily_task.daily_plan.date:
+            daily_task.scheduled_start_time = scheduled_start_time
+            daily_task.scheduled_end_time = scheduled_end_time
+            daily_task.save(
+                update_fields=["scheduled_start_time", "scheduled_end_time", "updated_at"],
+            )
+            return Response(DailyTaskSerializer(daily_task).data)
+
+        daily_task.status = DailyTask.Status.RESCHEDULED
+        daily_task.save(update_fields=["status", "updated_at"])
+        target_plan, _ = DailyPlan.objects.get_or_create(
+            user=request.user,
+            date=target_date,
+            defaults={"discipline_score": 100},
+        )
+        new_daily_task, _ = DailyTask.objects.get_or_create(
+            daily_plan=target_plan,
+            task=daily_task.task,
+            scheduled_start_time=scheduled_start_time,
+            defaults={
+                "scheduled_end_time": scheduled_end_time,
+                "status": DailyTask.Status.PENDING,
+            },
+        )
+        return Response(
+            {
+                "original": DailyTaskSerializer(daily_task).data,
+                "new": DailyTaskSerializer(new_daily_task).data,
+            }
+        )

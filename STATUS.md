@@ -6,7 +6,7 @@ each Codex prompt completes and review is done.
 
 **Last updated**: 2026-06-17
 **Current phase**: Phase 3 - Daily Planning
-**Current prompt**: 3.2 - Generate and fetch daily plan endpoints
+**Current prompt**: 3.3 - Daily task status actions follow-up / review
 
 ---
 
@@ -50,10 +50,11 @@ each Codex prompt completes and review is done.
 ## Phase 3 - Daily Planning
 
 - [ ] 3.1 - DailyPlan and DailyTask models
-- [ ] 3.2 - Generate and fetch daily plan endpoints
-- [ ] 3.3 - Daily task status actions (complete/miss/skip/reschedule)
+- [x] 3.2 - Generate and fetch daily plan endpoints
+- [x] 3.3 - Daily task status actions (complete/miss/skip/reschedule)
 
 **Notes**:
+- 2026-06-17: Added authenticated DailyPlan/DailyTask API at `/api/v1/daily-plans/`: get/create today, fetch by date, add owned task to plan, complete, miss, reschedule, and skip. No streak, discipline score, weekly review, frontend, or AI work was added. Next recommended prompt: review Phase 3 behavior against the original roadmap, then continue to Phase 4 streaks/discipline score.
 
 ---
 
