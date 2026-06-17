@@ -4,9 +4,9 @@ This file tracks build progress across phases and serves as the handoff point
 between Codex (execution) and Claude (architecture/review). Update it after
 each Codex prompt completes and review is done.
 
-**Last updated**: 2026-06-16
-**Current phase**: Phase 1 - Backend Setup
-**Current prompt**: 1.2 - JWT auth (register/login/refresh/logout/me)
+**Last updated**: 2026-06-17
+**Current phase**: Phase 2 - Task System
+**Current prompt**: 1.2 - JWT auth (recommended before Phase 2 APIs)
 
 ---
 
@@ -39,6 +39,7 @@ each Codex prompt completes and review is done.
 - [ ] 2.2 - Task model + API
 
 **Notes**:
+- 2026-06-17: Added MVP database models in `core` only: Category, Task, DailyPlan, DailyTask, Streak, and WeeklyReview. Created and applied `core.0001_initial`. No serializers, API endpoints, frontend, or AI features were added. Next recommended prompt: complete JWT auth from Phase 1.2, then add Category serializer/API and default categories on signup.
 
 ---
 
@@ -106,4 +107,4 @@ If Codex implemented something differently than `database-design.md`,
 `api-spec.md`, etc., log it here so the docs can be updated to match reality
 (or flagged as something to fix).
 
--
+- 2026-06-17: User explicitly requested all MVP database models during Phase 2. This creates model scaffolding for later roadmap phases earlier than `docs/codex-prompts.md`, but does not add later-phase business logic or endpoints.
