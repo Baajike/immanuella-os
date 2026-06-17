@@ -4,7 +4,7 @@ from rest_framework.exceptions import AuthenticationFailed
 from rest_framework_simplejwt.serializers import TokenObtainPairSerializer
 
 from .defaults import create_default_categories_for_user
-from .models import Category
+from .models import Category, Task
 
 
 User = get_user_model()
@@ -77,3 +77,50 @@ class CategorySerializer(serializers.ModelSerializer):
         model = Category
         fields = ["id", "name", "color", "icon", "created_at", "updated_at"]
         read_only_fields = ["id", "created_at", "updated_at"]
+
+
+class TaskCategorySerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Category
+        fields = ["id", "name", "color"]
+
+
+class TaskSerializer(serializers.ModelSerializer):
+    category = serializers.PrimaryKeyRelatedField(
+        queryset=Category.objects.none(),
+        allow_null=True,
+        required=False,
+    )
+
+    class Meta:
+        model = Task
+        fields = [
+            "id",
+            "title",
+            "description",
+            "category",
+            "priority",
+            "estimated_duration_minutes",
+            "due_date",
+            "repeat_type",
+            "repeat_days",
+            "is_active",
+            "created_at",
+            "updated_at",
+        ]
+        read_only_fields = ["id", "created_at", "updated_at"]
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        request = self.context.get("request")
+        if request and request.user and request.user.is_authenticated:
+            self.fields["category"].queryset = Category.objects.filter(user=request.user)
+
+    def to_representation(self, instance):
+        data = super().to_representation(instance)
+        data["category"] = (
+            TaskCategorySerializer(instance.category).data
+            if instance.category_id
+            else None
+        )
+        return data

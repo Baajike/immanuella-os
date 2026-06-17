@@ -5,8 +5,8 @@ between Codex (execution) and Claude (architecture/review). Update it after
 each Codex prompt completes and review is done.
 
 **Last updated**: 2026-06-17
-**Current phase**: Phase 2 - Task System
-**Current prompt**: 2.1 follow-up - default categories on signup
+**Current phase**: Phase 3 - Daily Planning
+**Current prompt**: 3.2 - Generate and fetch daily plan endpoints
 
 ---
 
@@ -36,12 +36,14 @@ each Codex prompt completes and review is done.
 
 ## Phase 2 - Task System
 
-- [ ] 2.1 - Category model + API + default categories on signup
-- [ ] 2.2 - Task model + API
+- [x] 2.1 - Category model + API + default categories on signup
+- [x] 2.2 - Task model + API
 
 **Notes**:
 - 2026-06-17: Added MVP database models in `core` only: Category, Task, DailyPlan, DailyTask, Streak, and WeeklyReview. Created and applied `core.0001_initial`. No serializers, API endpoints, frontend, or AI features were added.
 - 2026-06-17: Added authenticated Category API at `/api/v1/categories/`, scoped to `request.user`, with create/list/update/delete tests. Default categories on signup are still pending. Next recommended prompt: add default category creation on registration, then continue to Task API.
+- 2026-06-17: Added idempotent default category creation during registration for Work, Backend, Cybersecurity, Spanish, Personal Projects, Chores, Health, Rest, and Admin. Next recommended prompt: build Task API.
+- 2026-06-17: Added authenticated Task API at `/api/v1/tasks/`, scoped to `request.user`, with category ownership validation and filters for category, priority, repeat_type, is_active, and due_date. Next recommended prompt: daily plan generate/fetch endpoints.
 
 ---
 

@@ -71,6 +71,8 @@ curl -X POST http://127.0.0.1:8000/api/v1/auth/register/ `
   -d "{\"email\":\"immanuella@example.com\",\"password\":\"StrongPassword123\",\"name\":\"Immanuella\"}"
 ```
 
+Successful registration automatically creates the default categories for that user: Work, Backend, Cybersecurity, Spanish, Personal Projects, Chores, Health, Rest, and Admin.
+
 Log in and get tokens:
 
 ```powershell
@@ -125,5 +127,49 @@ Delete a category:
 
 ```powershell
 curl -X DELETE http://127.0.0.1:8000/api/v1/categories/1/ `
+  -H "Authorization: Bearer YOUR_ACCESS_TOKEN"
+```
+
+## Task API
+
+Task endpoints live under `/api/v1/tasks/` and require a JWT access token.
+
+- `GET /api/v1/tasks/`
+- `POST /api/v1/tasks/`
+- `GET /api/v1/tasks/{id}/`
+- `PATCH /api/v1/tasks/{id}/`
+- `DELETE /api/v1/tasks/{id}/`
+
+Supported list filters: `category`, `priority`, `repeat_type`, `is_active`, and `due_date`.
+
+Create a task:
+
+```powershell
+curl -X POST http://127.0.0.1:8000/api/v1/tasks/ `
+  -H "Authorization: Bearer YOUR_ACCESS_TOKEN" `
+  -H "Content-Type: application/json" `
+  -d "{\"title\":\"Backend study session\",\"description\":\"Work through DRF tutorial\",\"category\":1,\"priority\":\"high\",\"estimated_duration_minutes\":60,\"due_date\":\"2026-06-20\",\"repeat_type\":\"weekdays\",\"repeat_days\":null}"
+```
+
+List and filter your tasks:
+
+```powershell
+curl "http://127.0.0.1:8000/api/v1/tasks/?priority=high&is_active=true" `
+  -H "Authorization: Bearer YOUR_ACCESS_TOKEN"
+```
+
+Update a task:
+
+```powershell
+curl -X PATCH http://127.0.0.1:8000/api/v1/tasks/1/ `
+  -H "Authorization: Bearer YOUR_ACCESS_TOKEN" `
+  -H "Content-Type: application/json" `
+  -d "{\"priority\":\"critical\",\"estimated_duration_minutes\":90}"
+```
+
+Delete a task:
+
+```powershell
+curl -X DELETE http://127.0.0.1:8000/api/v1/tasks/1/ `
   -H "Authorization: Bearer YOUR_ACCESS_TOKEN"
 ```
