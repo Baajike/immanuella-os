@@ -3,7 +3,7 @@ from datetime import timedelta
 
 from django.utils import timezone
 
-from .models import DailyPlan, DailyTask, WeeklyReview
+from .models import DailyTask, WeeklyReview
 
 
 def get_week_start(value):

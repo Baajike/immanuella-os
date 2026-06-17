@@ -49,12 +49,13 @@ each Codex prompt completes and review is done.
 
 ## Phase 3 - Daily Planning
 
-- [ ] 3.1 - DailyPlan and DailyTask models
+- [x] 3.1 - DailyPlan and DailyTask models
 - [x] 3.2 - Generate and fetch daily plan endpoints
 - [x] 3.3 - Daily task status actions (complete/miss/skip/reschedule)
 
 **Notes**:
 - 2026-06-17: Added authenticated DailyPlan/DailyTask API at `/api/v1/daily-plans/`: get/create today, fetch by date, add owned task to plan, complete, miss, reschedule, and skip. No streak, discipline score, weekly review, frontend, or AI work was added. Next recommended prompt: review Phase 3 behavior against the original roadmap, then continue to Phase 4 streaks/discipline score.
+- 2026-06-17: Backend MVP review confirmed the DailyPlan and DailyTask models are present in `core.0001_initial`; checked off 3.1 to match the implemented state.
 
 ---
 
@@ -90,6 +91,7 @@ each Codex prompt completes and review is done.
 
 **Notes**:
 - 2026-06-17: Added authenticated Weekly Review API at `/api/v1/weekly-reviews/`: generate current week, generate by week start date, list owned reviews, and retrieve owned review details. Reviews aggregate Monday-to-Sunday DailyTask counts, strongest/weakest categories, weekly score, completion rate, skipped count as a computed response field, and rule-based summary text. Frontend, AI, auth behavior changes, and Never Miss Twice warning were not added. Next recommended prompt: implement Never Miss Twice warning before building the weekly review frontend.
+- 2026-06-17: Backend MVP review and cleanup completed. URL organization, serializers, views, services, tests, README endpoint docs, and STATUS were reviewed; only a harmless unused import and stale status checkbox needed cleanup. Public API behavior was unchanged.
 
 ---
 
