@@ -15,7 +15,7 @@ environ.Env.read_env(BASE_DIR / ".env")
 # SECURITY WARNING: keep the secret key used in production secret!
 SECRET_KEY = env(
     "SECRET_KEY",
-    default="django-insecure-local-dev-change-me",
+    default="django-insecure-local-dev-change-me-at-least-32-characters",
 )
 
 # SECURITY WARNING: don't run with debug turned on in production!
@@ -125,6 +125,9 @@ DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 CORS_ALLOWED_ORIGINS = env("CORS_ALLOWED_ORIGINS")
 
 REST_FRAMEWORK = {
+    "DEFAULT_AUTHENTICATION_CLASSES": [
+        "rest_framework_simplejwt.authentication.JWTAuthentication",
+    ],
     "DEFAULT_RENDERER_CLASSES": [
         "rest_framework.renderers.JSONRenderer",
         "rest_framework.renderers.BrowsableAPIRenderer",

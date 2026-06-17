@@ -51,3 +51,37 @@ python manage.py runserver
 The backend will run at `http://127.0.0.1:8000/`.
 
 The frontend local dev origin `http://localhost:3000` is already allowed by CORS.
+
+## Auth Endpoints
+
+Authentication endpoints live under `/api/v1/auth/`.
+
+- `POST /api/v1/auth/register/`
+- `POST /api/v1/auth/login/`
+- `POST /api/v1/auth/token/refresh/`
+- `GET /api/v1/auth/me/`
+
+### Local Auth Testing
+
+Register a user:
+
+```powershell
+curl -X POST http://127.0.0.1:8000/api/v1/auth/register/ `
+  -H "Content-Type: application/json" `
+  -d "{\"email\":\"immanuella@example.com\",\"password\":\"StrongPassword123\",\"name\":\"Immanuella\"}"
+```
+
+Log in and get tokens:
+
+```powershell
+curl -X POST http://127.0.0.1:8000/api/v1/auth/login/ `
+  -H "Content-Type: application/json" `
+  -d "{\"email\":\"immanuella@example.com\",\"password\":\"StrongPassword123\"}"
+```
+
+Fetch the current user with the returned access token:
+
+```powershell
+curl http://127.0.0.1:8000/api/v1/auth/me/ `
+  -H "Authorization: Bearer YOUR_ACCESS_TOKEN"
+```

@@ -6,7 +6,7 @@ each Codex prompt completes and review is done.
 
 **Last updated**: 2026-06-17
 **Current phase**: Phase 2 - Task System
-**Current prompt**: 1.2 - JWT auth (recommended before Phase 2 APIs)
+**Current prompt**: 2.1 - Category API + default categories on signup
 
 ---
 
@@ -25,11 +25,12 @@ each Codex prompt completes and review is done.
 ## Phase 1 - Backend Setup
 
 - [x] 1.1 - Project scaffold (Django + DRF + Postgres + CORS)
-- [ ] 1.2 - JWT auth (register/login/refresh/logout/me)
+- [x] 1.2 - JWT auth (register/login/refresh/logout/me)
 
 **Notes**:
 - 2026-06-16: Created Django project in `backend/`, configured DRF, CORS, django-environ, and PostgreSQL env vars. Added `core` app with domain placeholder packages for users/tasks/planning/reviews; no models or business features yet.
 - 2026-06-16: Phase 1 local database fix: SQLite is now the default database when `DATABASE_URL` is missing or empty; PostgreSQL remains supported through optional `DATABASE_URL`.
+- 2026-06-17: Added JWT auth foundation using SimpleJWT with `/api/v1/auth/register/`, `/login/`, `/token/refresh/`, and `/me/`. Registration and current-user serializers/views/routes/tests are in place; logout is still pending because this prompt did not request token blacklist/logout.
 
 ---
 
@@ -39,7 +40,8 @@ each Codex prompt completes and review is done.
 - [ ] 2.2 - Task model + API
 
 **Notes**:
-- 2026-06-17: Added MVP database models in `core` only: Category, Task, DailyPlan, DailyTask, Streak, and WeeklyReview. Created and applied `core.0001_initial`. No serializers, API endpoints, frontend, or AI features were added. Next recommended prompt: complete JWT auth from Phase 1.2, then add Category serializer/API and default categories on signup.
+- 2026-06-17: Added MVP database models in `core` only: Category, Task, DailyPlan, DailyTask, Streak, and WeeklyReview. Created and applied `core.0001_initial`. No serializers, API endpoints, frontend, or AI features were added.
+- 2026-06-17: Next recommended prompt: add Category API and default categories on signup.
 
 ---
 
