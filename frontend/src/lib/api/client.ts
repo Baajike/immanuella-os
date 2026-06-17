@@ -1,6 +1,7 @@
 import type {
   AuthTokens,
   Category,
+  CreateTaskPayload,
   DailyPlan,
   DisciplineScore,
   LoginPayload,
@@ -124,6 +125,14 @@ export function listCategories(accessToken: string) {
 
 export function listTasks(accessToken: string) {
   return apiRequest<PaginatedResponse<Task>>("/tasks/", { accessToken });
+}
+
+export function createTask(accessToken: string, payload: CreateTaskPayload) {
+  return apiRequest<Task>("/tasks/", {
+    accessToken,
+    method: "POST",
+    body: payload,
+  });
 }
 
 export function getTodaysDailyPlan(accessToken: string) {

@@ -72,6 +72,17 @@ export interface Task {
   updated_at: ISODateTime;
 }
 
+export interface CreateTaskPayload {
+  title: string;
+  description?: string;
+  category?: ApiId | null;
+  priority: TaskPriority;
+  estimated_duration_minutes: number;
+  due_date?: ISODate | null;
+  repeat_type: RepeatType;
+  repeat_days?: number[] | null;
+}
+
 export interface DailyTaskSummary {
   id: ApiId;
   title: string;

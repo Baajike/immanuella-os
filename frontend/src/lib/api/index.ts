@@ -2,6 +2,7 @@ export {
   API_BASE_URL,
   ApiError,
   buildApiUrl,
+  createTask,
   getCurrentUser,
   getNextRecommendation,
   getStreaks,
