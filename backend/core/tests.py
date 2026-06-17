@@ -1,4 +1,4 @@
-from datetime import date, datetime, time
+from datetime import date, datetime, time, timedelta
 from unittest.mock import patch
 
 from django.contrib.auth import get_user_model
@@ -9,7 +9,7 @@ from rest_framework import status
 from rest_framework.test import APITestCase
 
 from .defaults import DEFAULT_CATEGORIES, create_default_categories_for_user
-from .models import Category, DailyPlan, DailyTask, Streak, Task
+from .models import Category, DailyPlan, DailyTask, Streak, Task, WeeklyReview
 
 
 User = get_user_model()
@@ -1020,4 +1020,290 @@ class RecommendationEndpointTests(APITestCase):
             task=task,
             status=status,
             scheduled_start_time=scheduled_start_time,
+        )
+
+
+class WeeklyReviewEndpointTests(APITestCase):
+    def setUp(self):
+        self.user = User.objects.create_user(
+            username="immanuella@example.com",
+            email="immanuella@example.com",
+            password="StrongPassword123",
+            first_name="Immanuella",
+        )
+        self.other_user = User.objects.create_user(
+            username="other@example.com",
+            email="other@example.com",
+            password="StrongPassword123",
+            first_name="Other",
+        )
+        self.backend_category = Category.objects.create(
+            user=self.user,
+            name="Backend Custom",
+            color="#3B82F6",
+            icon="code",
+        )
+        self.cybersecurity_category = Category.objects.create(
+            user=self.user,
+            name="Cybersecurity Custom",
+            color="#EF4444",
+            icon="shield",
+        )
+        self.chores_category = Category.objects.create(
+            user=self.user,
+            name="Chores Custom",
+            color="#F59E0B",
+            icon="home",
+        )
+        self.other_category = Category.objects.create(
+            user=self.other_user,
+            name="Other Category",
+            color="#10B981",
+            icon="folder",
+        )
+        self.week_start = date(2026, 6, 15)
+
+    def test_unauthenticated_users_cannot_access_weekly_review_endpoints(self):
+        list_response = self.client.get(reverse("weekly-review-list"))
+        generate_response = self.client.post(reverse("weekly-review-generate-current"))
+
+        self.assertEqual(list_response.status_code, status.HTTP_401_UNAUTHORIZED)
+        self.assertEqual(generate_response.status_code, status.HTTP_401_UNAUTHORIZED)
+
+    def test_authenticated_user_can_generate_current_week_review(self):
+        self.client.force_authenticate(user=self.user)
+
+        response = self.client.post(reverse("weekly-review-generate-current"))
+
+        self.assertEqual(response.status_code, status.HTTP_201_CREATED)
+        self.assertEqual(
+            response.data["week_start_date"],
+            str(timezone.localdate() - timedelta(days=timezone.localdate().weekday())),
+        )
+        self.assertTrue(WeeklyReview.objects.filter(user=self.user).exists())
+
+    def test_authenticated_user_can_generate_review_for_specific_week_start_date(self):
+        self.client.force_authenticate(user=self.user)
+        self.create_weekly_review_tasks()
+
+        response = self.client.post(
+            reverse("weekly-review-generate", args=["2026-06-15"])
+        )
+
+        self.assertEqual(response.status_code, status.HTTP_201_CREATED)
+        self.assertEqual(response.data["week_start_date"], "2026-06-15")
+        self.assertEqual(response.data["week_end_date"], "2026-06-21")
+
+    def test_generating_same_week_twice_reuses_existing_review(self):
+        self.client.force_authenticate(user=self.user)
+        self.create_daily_task(
+            category=self.backend_category,
+            title="First backend task",
+            status_value=DailyTask.Status.COMPLETED,
+        )
+
+        first_response = self.client.post(
+            reverse("weekly-review-generate", args=["2026-06-15"])
+        )
+        self.create_daily_task(
+            category=self.backend_category,
+            title="Second backend task",
+            status_value=DailyTask.Status.MISSED,
+        )
+        second_response = self.client.post(
+            reverse("weekly-review-generate", args=["2026-06-15"])
+        )
+
+        self.assertEqual(first_response.status_code, status.HTTP_201_CREATED)
+        self.assertEqual(second_response.status_code, status.HTTP_200_OK)
+        self.assertEqual(first_response.data["id"], second_response.data["id"])
+        self.assertEqual(WeeklyReview.objects.filter(user=self.user).count(), 1)
+        self.assertEqual(second_response.data["total_tasks"], 2)
+
+    def test_total_completed_and_missed_counts_are_calculated_correctly(self):
+        self.client.force_authenticate(user=self.user)
+        self.create_weekly_review_tasks()
+
+        response = self.client.post(
+            reverse("weekly-review-generate", args=["2026-06-15"])
+        )
+
+        self.assertEqual(response.status_code, status.HTTP_201_CREATED)
+        self.assertEqual(response.data["total_tasks"], 7)
+        self.assertEqual(response.data["completed_tasks"], 4)
+        self.assertEqual(response.data["missed_tasks"], 2)
+        self.assertEqual(response.data["skipped_tasks"], 1)
+        self.assertEqual(response.data["completion_rate"], 57)
+        self.assertEqual(response.data["weekly_score"], 57)
+
+    def test_strongest_category_is_calculated_correctly(self):
+        self.client.force_authenticate(user=self.user)
+        self.create_weekly_review_tasks()
+
+        response = self.client.post(
+            reverse("weekly-review-generate", args=["2026-06-15"])
+        )
+
+        self.assertEqual(response.status_code, status.HTTP_201_CREATED)
+        self.assertEqual(
+            response.data["strongest_category"]["id"],
+            self.backend_category.id,
+        )
+
+    def test_weakest_category_is_calculated_correctly(self):
+        self.client.force_authenticate(user=self.user)
+        self.create_weekly_review_tasks()
+
+        response = self.client.post(
+            reverse("weekly-review-generate", args=["2026-06-15"])
+        )
+
+        self.assertEqual(response.status_code, status.HTTP_201_CREATED)
+        self.assertEqual(
+            response.data["weakest_category"]["id"],
+            self.cybersecurity_category.id,
+        )
+
+    def test_user_cannot_access_another_users_review(self):
+        other_review = WeeklyReview.objects.create(
+            user=self.other_user,
+            week_start_date=self.week_start,
+            week_end_date=self.week_start + timedelta(days=6),
+            total_tasks=1,
+            completed_tasks=1,
+            missed_tasks=0,
+            weekly_score=100,
+            summary="Other review",
+        )
+        self.client.force_authenticate(user=self.user)
+
+        response = self.client.get(reverse("weekly-review-detail", args=[other_review.id]))
+
+        self.assertEqual(response.status_code, status.HTTP_404_NOT_FOUND)
+
+    def test_list_endpoint_only_returns_authenticated_users_reviews(self):
+        own_review = WeeklyReview.objects.create(
+            user=self.user,
+            week_start_date=self.week_start,
+            week_end_date=self.week_start + timedelta(days=6),
+            total_tasks=1,
+            completed_tasks=1,
+            missed_tasks=0,
+            weekly_score=100,
+            summary="Own review",
+        )
+        WeeklyReview.objects.create(
+            user=self.other_user,
+            week_start_date=self.week_start,
+            week_end_date=self.week_start + timedelta(days=6),
+            total_tasks=1,
+            completed_tasks=0,
+            missed_tasks=1,
+            weekly_score=0,
+            summary="Other review",
+        )
+        self.client.force_authenticate(user=self.user)
+
+        response = self.client.get(reverse("weekly-review-list"))
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(response.data["count"], 1)
+        self.assertEqual(response.data["results"][0]["id"], own_review.id)
+
+    def test_endpoint_returns_expected_response_shape(self):
+        self.client.force_authenticate(user=self.user)
+        self.create_weekly_review_tasks()
+
+        response = self.client.post(
+            reverse("weekly-review-generate", args=["2026-06-15"])
+        )
+
+        self.assertEqual(response.status_code, status.HTTP_201_CREATED)
+        self.assertEqual(
+            set(response.data.keys()),
+            {
+                "id",
+                "week_start_date",
+                "week_end_date",
+                "total_tasks",
+                "completed_tasks",
+                "missed_tasks",
+                "skipped_tasks",
+                "completion_rate",
+                "strongest_category",
+                "weakest_category",
+                "weekly_score",
+                "summary",
+                "created_at",
+                "updated_at",
+            },
+        )
+
+    def create_weekly_review_tasks(self):
+        self.create_daily_task(
+            category=self.backend_category,
+            title="Backend completed one",
+            status_value=DailyTask.Status.COMPLETED,
+        )
+        self.create_daily_task(
+            category=self.backend_category,
+            title="Backend completed two",
+            status_value=DailyTask.Status.COMPLETED,
+        )
+        self.create_daily_task(
+            category=self.cybersecurity_category,
+            title="Cybersecurity completed",
+            status_value=DailyTask.Status.COMPLETED,
+        )
+        self.create_daily_task(
+            category=self.cybersecurity_category,
+            title="Cybersecurity missed one",
+            status_value=DailyTask.Status.MISSED,
+        )
+        self.create_daily_task(
+            category=self.cybersecurity_category,
+            title="Cybersecurity missed two",
+            status_value=DailyTask.Status.MISSED,
+        )
+        self.create_daily_task(
+            category=self.chores_category,
+            title="Chores completed",
+            status_value=DailyTask.Status.COMPLETED,
+        )
+        self.create_daily_task(
+            category=self.chores_category,
+            title="Chores skipped",
+            status_value=DailyTask.Status.SKIPPED,
+        )
+        self.create_daily_task(
+            category=self.backend_category,
+            title="Outside week task",
+            status_value=DailyTask.Status.COMPLETED,
+            plan_date=date(2026, 6, 22),
+        )
+
+    def create_daily_task(
+        self,
+        category,
+        title,
+        status_value,
+        user=None,
+        plan_date=None,
+    ):
+        if user is None:
+            user = self.user
+        if plan_date is None:
+            plan_date = self.week_start
+
+        plan, _ = DailyPlan.objects.get_or_create(user=user, date=plan_date)
+        task = Task.objects.create(
+            user=user,
+            category=category,
+            title=title,
+            priority=Task.Priority.NORMAL,
+        )
+        return DailyTask.objects.create(
+            daily_plan=plan,
+            task=task,
+            status=status_value,
         )

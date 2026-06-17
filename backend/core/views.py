@@ -5,7 +5,7 @@ from rest_framework.response import Response
 from rest_framework.views import APIView
 from rest_framework_simplejwt.views import TokenObtainPairView
 
-from .models import Category, DailyPlan, DailyTask, Streak, Task
+from .models import Category, DailyPlan, DailyTask, Streak, Task, WeeklyReview
 from .serializers import (
     AddDailyTaskSerializer,
     CategorySerializer,
@@ -19,9 +19,11 @@ from .serializers import (
     RescheduleDailyTaskSerializer,
     StreakSerializer,
     TaskSerializer,
+    WeeklyReviewSerializer,
 )
 from .recommendations import get_next_daily_task_recommendation
 from .services import apply_daily_task_status
+from .weekly_reviews import generate_weekly_review
 
 
 class RegisterView(generics.CreateAPIView):
@@ -306,4 +308,46 @@ class NextRecommendationView(APIView):
                 "current_time": recommendation["current_time"],
                 "date": recommendation["date"],
             }
+        )
+
+
+class WeeklyReviewListView(generics.ListAPIView):
+    permission_classes = [permissions.IsAuthenticated]
+    serializer_class = WeeklyReviewSerializer
+
+    def get_queryset(self):
+        return (
+            WeeklyReview.objects.filter(user=self.request.user)
+            .select_related("strongest_category", "weakest_category")
+        )
+
+
+class WeeklyReviewDetailView(generics.RetrieveAPIView):
+    permission_classes = [permissions.IsAuthenticated]
+    serializer_class = WeeklyReviewSerializer
+
+    def get_queryset(self):
+        return (
+            WeeklyReview.objects.filter(user=self.request.user)
+            .select_related("strongest_category", "weakest_category")
+        )
+
+
+class GenerateWeeklyReviewView(APIView):
+    permission_classes = [permissions.IsAuthenticated]
+
+    def post(self, request, week_start_date=None):
+        date_value = None
+        if week_start_date is not None:
+            date_value = parse_date(week_start_date)
+            if date_value is None:
+                return Response(
+                    {"week_start_date": ["Enter a valid date in YYYY-MM-DD format."]},
+                    status=status.HTTP_400_BAD_REQUEST,
+                )
+
+        review, created = generate_weekly_review(request.user, date_value)
+        return Response(
+            WeeklyReviewSerializer(review).data,
+            status=status.HTTP_201_CREATED if created else status.HTTP_200_OK,
         )

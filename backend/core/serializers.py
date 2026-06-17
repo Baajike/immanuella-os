@@ -4,7 +4,8 @@ from rest_framework.exceptions import AuthenticationFailed
 from rest_framework_simplejwt.serializers import TokenObtainPairSerializer
 
 from .defaults import create_default_categories_for_user
-from .models import Category, DailyPlan, DailyTask, Streak, Task
+from .models import Category, DailyPlan, DailyTask, Streak, Task, WeeklyReview
+from .weekly_reviews import count_skipped_tasks_for_review
 
 
 User = get_user_model()
@@ -234,3 +235,40 @@ class RescheduleDailyTaskSerializer(serializers.Serializer):
     scheduled_start_time = serializers.TimeField(required=True)
     scheduled_end_time = serializers.TimeField(required=False, allow_null=True)
     target_date = serializers.DateField(required=False)
+
+
+class WeeklyReviewSerializer(serializers.ModelSerializer):
+    strongest_category = TaskCategorySerializer(read_only=True)
+    weakest_category = TaskCategorySerializer(read_only=True)
+    skipped_tasks = serializers.SerializerMethodField()
+    completion_rate = serializers.SerializerMethodField()
+
+    class Meta:
+        model = WeeklyReview
+        fields = [
+            "id",
+            "week_start_date",
+            "week_end_date",
+            "total_tasks",
+            "completed_tasks",
+            "missed_tasks",
+            "skipped_tasks",
+            "completion_rate",
+            "strongest_category",
+            "weakest_category",
+            "weekly_score",
+            "summary",
+            "created_at",
+            "updated_at",
+        ]
+        read_only_fields = fields
+
+    def get_skipped_tasks(self, obj):
+        if hasattr(obj, "skipped_tasks_value"):
+            return obj.skipped_tasks_value
+        return count_skipped_tasks_for_review(obj)
+
+    def get_completion_rate(self, obj):
+        if obj.total_tasks == 0:
+            return 0
+        return round((obj.completed_tasks / obj.total_tasks) * 100)

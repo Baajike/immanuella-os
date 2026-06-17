@@ -276,3 +276,40 @@ curl http://127.0.0.1:8000/api/v1/recommendations/next/ `
 ```
 
 The response includes `recommended_task`, `reason`, `message`, `current_time`, and `date`. If today's plan does not exist, or if there are no pending or missed daily tasks, `recommended_task` is `null`.
+
+## Weekly Review API
+
+Weekly review endpoints require a JWT access token.
+
+- `GET /api/v1/weekly-reviews/`
+- `GET /api/v1/weekly-reviews/{id}/`
+- `POST /api/v1/weekly-reviews/generate/`
+- `POST /api/v1/weekly-reviews/generate/{week_start_date}/`
+
+Generate the current week review:
+
+```powershell
+curl -X POST http://127.0.0.1:8000/api/v1/weekly-reviews/generate/ `
+  -H "Authorization: Bearer YOUR_ACCESS_TOKEN"
+```
+
+Generate a review for a specific Monday-to-Sunday week:
+
+```powershell
+curl -X POST http://127.0.0.1:8000/api/v1/weekly-reviews/generate/2026-06-15/ `
+  -H "Authorization: Bearer YOUR_ACCESS_TOKEN"
+```
+
+List your reviews:
+
+```powershell
+curl http://127.0.0.1:8000/api/v1/weekly-reviews/ `
+  -H "Authorization: Bearer YOUR_ACCESS_TOKEN"
+```
+
+Get one review:
+
+```powershell
+curl http://127.0.0.1:8000/api/v1/weekly-reviews/1/ `
+  -H "Authorization: Bearer YOUR_ACCESS_TOKEN"
+```
