@@ -134,6 +134,12 @@ class DailyTask(TimestampedModel):
     )
     completed_at = models.DateTimeField(null=True, blank=True)
     missed_reason = models.CharField(max_length=255, blank=True)
+    score_applied_status = models.CharField(
+        max_length=20,
+        choices=Status.choices,
+        null=True,
+        blank=True,
+    )
 
     class Meta:
         constraints = [

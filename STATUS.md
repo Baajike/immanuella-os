@@ -5,8 +5,8 @@ between Codex (execution) and Claude (architecture/review). Update it after
 each Codex prompt completes and review is done.
 
 **Last updated**: 2026-06-17
-**Current phase**: Phase 3 - Daily Planning
-**Current prompt**: 3.3 - Daily task status actions follow-up / review
+**Current phase**: Phase 4 - Streaks and Discipline Score
+**Current prompt**: 4.3 - Never Miss Twice warning
 
 ---
 
@@ -60,11 +60,12 @@ each Codex prompt completes and review is done.
 
 ## Phase 4 - Streaks and Discipline Score
 
-- [ ] 4.1 - Streak model + update logic
-- [ ] 4.2 - Discipline score logic
+- [x] 4.1 - Streak model + update logic
+- [x] 4.2 - Discipline score logic
 - [ ] 4.3 - Never Miss Twice warning
 
 **Notes**:
+- 2026-06-17: Added idempotent discipline score updates for complete/miss/skip, streak updates on completion, `/api/v1/streaks/`, and `/api/v1/discipline-score/today/`. Added `DailyTask.score_applied_status` migration for deterministic score application. Weekly review, frontend, AI, and Never Miss Twice warning were not added. Next recommended prompt: implement Never Miss Twice warning.
 
 ---
 

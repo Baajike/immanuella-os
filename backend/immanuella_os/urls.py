@@ -23,4 +23,5 @@ urlpatterns = [
     path('api/v1/categories/', include('core.category_urls')),
     path('api/v1/tasks/', include('core.task_urls')),
     path('api/v1/daily-plans/', include('core.daily_plan_urls')),
+    path('api/v1/', include('core.progress_urls')),
 ]

@@ -8,7 +8,7 @@ from rest_framework import status
 from rest_framework.test import APITestCase
 
 from .defaults import DEFAULT_CATEGORIES, create_default_categories_for_user
-from .models import Category, DailyPlan, DailyTask, Task
+from .models import Category, DailyPlan, DailyTask, Streak, Task
 
 
 User = get_user_model()
@@ -663,4 +663,173 @@ class DailyPlanEndpointTests(APITestCase):
 
     def create_daily_task(self):
         plan = DailyPlan.objects.create(user=self.user, date=date(2026, 6, 20))
+        return DailyTask.objects.create(daily_plan=plan, task=self.task)
+
+
+class StreakAndDisciplineScoreTests(APITestCase):
+    def setUp(self):
+        self.user = User.objects.create_user(
+            username="immanuella@example.com",
+            email="immanuella@example.com",
+            password="StrongPassword123",
+            first_name="Immanuella",
+        )
+        self.other_user = User.objects.create_user(
+            username="other@example.com",
+            email="other@example.com",
+            password="StrongPassword123",
+            first_name="Other",
+        )
+        self.category = Category.objects.create(
+            user=self.user,
+            name="Backend Custom",
+            color="#3B82F6",
+            icon="code",
+        )
+        self.task = Task.objects.create(
+            user=self.user,
+            category=self.category,
+            title="Backend study session",
+            priority=Task.Priority.HIGH,
+        )
+
+    def test_completing_high_priority_daily_task_increases_discipline_score(self):
+        self.client.force_authenticate(user=self.user)
+        daily_task = self.create_daily_task(priority=Task.Priority.HIGH)
+
+        response = self.client.patch(reverse("daily-task-complete", args=[daily_task.id]))
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        daily_task.daily_plan.refresh_from_db()
+        self.assertEqual(daily_task.daily_plan.discipline_score, 110)
+
+    def test_missing_high_priority_daily_task_decreases_discipline_score(self):
+        self.client.force_authenticate(user=self.user)
+        daily_task = self.create_daily_task(priority=Task.Priority.HIGH)
+
+        response = self.client.patch(reverse("daily-task-miss", args=[daily_task.id]))
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        daily_task.daily_plan.refresh_from_db()
+        self.assertEqual(daily_task.daily_plan.discipline_score, 85)
+
+    def test_skipping_task_does_not_penalize_score(self):
+        self.client.force_authenticate(user=self.user)
+        daily_task = self.create_daily_task(priority=Task.Priority.HIGH)
+
+        response = self.client.patch(reverse("daily-task-skip", args=[daily_task.id]))
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        daily_task.daily_plan.refresh_from_db()
+        self.assertEqual(daily_task.daily_plan.discipline_score, 100)
+
+    def test_marking_same_task_complete_twice_does_not_double_count_score(self):
+        self.client.force_authenticate(user=self.user)
+        daily_task = self.create_daily_task(priority=Task.Priority.HIGH)
+
+        first_response = self.client.patch(reverse("daily-task-complete", args=[daily_task.id]))
+        second_response = self.client.patch(reverse("daily-task-complete", args=[daily_task.id]))
+
+        self.assertEqual(first_response.status_code, status.HTTP_200_OK)
+        self.assertEqual(second_response.status_code, status.HTTP_200_OK)
+        daily_task.daily_plan.refresh_from_db()
+        self.assertEqual(daily_task.daily_plan.discipline_score, 110)
+
+    def test_completing_tasks_on_consecutive_days_increments_streak(self):
+        self.client.force_authenticate(user=self.user)
+        first = self.create_daily_task(plan_date=date(2026, 6, 20))
+        second = self.create_daily_task(plan_date=date(2026, 6, 21))
+
+        self.client.patch(reverse("daily-task-complete", args=[first.id]))
+        self.client.patch(reverse("daily-task-complete", args=[second.id]))
+
+        streak = Streak.objects.get(user=self.user, category=self.category)
+        self.assertEqual(streak.current_streak, 2)
+        self.assertEqual(streak.longest_streak, 2)
+        self.assertEqual(streak.last_completed_date, date(2026, 6, 21))
+
+    def test_completing_after_date_gap_resets_streak(self):
+        self.client.force_authenticate(user=self.user)
+        first = self.create_daily_task(plan_date=date(2026, 6, 20))
+        second = self.create_daily_task(plan_date=date(2026, 6, 22))
+
+        self.client.patch(reverse("daily-task-complete", args=[first.id]))
+        self.client.patch(reverse("daily-task-complete", args=[second.id]))
+
+        streak = Streak.objects.get(user=self.user, category=self.category)
+        self.assertEqual(streak.current_streak, 1)
+        self.assertEqual(streak.last_completed_date, date(2026, 6, 22))
+
+    def test_longest_streak_updates_correctly(self):
+        self.client.force_authenticate(user=self.user)
+        first = self.create_daily_task(plan_date=date(2026, 6, 20))
+        second = self.create_daily_task(plan_date=date(2026, 6, 21))
+        third = self.create_daily_task(plan_date=date(2026, 6, 23))
+
+        self.client.patch(reverse("daily-task-complete", args=[first.id]))
+        self.client.patch(reverse("daily-task-complete", args=[second.id]))
+        self.client.patch(reverse("daily-task-complete", args=[third.id]))
+
+        streak = Streak.objects.get(user=self.user, category=self.category)
+        self.assertEqual(streak.current_streak, 1)
+        self.assertEqual(streak.longest_streak, 2)
+
+    def test_tasks_without_category_do_not_create_streaks(self):
+        self.client.force_authenticate(user=self.user)
+        task = Task.objects.create(
+            user=self.user,
+            category=None,
+            title="Uncategorized task",
+            priority=Task.Priority.NORMAL,
+        )
+        plan = DailyPlan.objects.create(user=self.user, date=date(2026, 6, 20))
+        daily_task = DailyTask.objects.create(daily_plan=plan, task=task)
+
+        response = self.client.patch(reverse("daily-task-complete", args=[daily_task.id]))
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertFalse(Streak.objects.filter(user=self.user).exists())
+
+    def test_users_cannot_access_another_users_streaks_or_score(self):
+        other_category = Category.objects.create(
+            user=self.other_user,
+            name="Other Category",
+            color="#EF4444",
+            icon="shield",
+        )
+        Streak.objects.create(
+            user=self.other_user,
+            category=other_category,
+            current_streak=7,
+            longest_streak=7,
+            last_completed_date=date(2026, 6, 20),
+        )
+        DailyPlan.objects.create(
+            user=self.other_user,
+            date=timezone.localdate(),
+            discipline_score=42,
+        )
+        self.client.force_authenticate(user=self.user)
+
+        streak_response = self.client.get(reverse("streak-list"))
+        score_response = self.client.get(reverse("discipline-score-today"))
+
+        self.assertEqual(streak_response.status_code, status.HTTP_200_OK)
+        self.assertEqual(streak_response.data, [])
+        self.assertEqual(score_response.status_code, status.HTTP_200_OK)
+        self.assertEqual(score_response.data["discipline_score"], 100)
+
+    def test_unauthenticated_users_cannot_access_streak_or_score_endpoints(self):
+        streak_response = self.client.get(reverse("streak-list"))
+        score_response = self.client.get(reverse("discipline-score-today"))
+
+        self.assertEqual(streak_response.status_code, status.HTTP_401_UNAUTHORIZED)
+        self.assertEqual(score_response.status_code, status.HTTP_401_UNAUTHORIZED)
+
+    def create_daily_task(self, priority=Task.Priority.HIGH, plan_date=None):
+        if plan_date is None:
+            plan_date = date(2026, 6, 20)
+        self.task.priority = priority
+        self.task.save(update_fields=["priority", "updated_at"])
+        plan = DailyPlan.objects.create(user=self.user, date=plan_date)
         return DailyTask.objects.create(daily_plan=plan, task=self.task)

@@ -5,7 +5,7 @@ from rest_framework.response import Response
 from rest_framework.views import APIView
 from rest_framework_simplejwt.views import TokenObtainPairView
 
-from .models import Category, DailyPlan, DailyTask, Task
+from .models import Category, DailyPlan, DailyTask, Streak, Task
 from .serializers import (
     AddDailyTaskSerializer,
     CategorySerializer,
@@ -16,8 +16,10 @@ from .serializers import (
     MissDailyTaskSerializer,
     RegisterSerializer,
     RescheduleDailyTaskSerializer,
+    StreakSerializer,
     TaskSerializer,
 )
+from .services import apply_daily_task_status
 
 
 class RegisterView(generics.CreateAPIView):
@@ -182,9 +184,7 @@ class CompleteDailyTaskView(DailyTaskActionBaseView):
         if daily_task is None:
             return Response({"detail": "Not found."}, status=status.HTTP_404_NOT_FOUND)
 
-        daily_task.status = DailyTask.Status.COMPLETED
-        daily_task.completed_at = timezone.now()
-        daily_task.save(update_fields=["status", "completed_at", "updated_at"])
+        daily_task = apply_daily_task_status(daily_task, DailyTask.Status.COMPLETED)
         return Response(DailyTaskSerializer(daily_task).data)
 
 
@@ -196,9 +196,11 @@ class MissDailyTaskView(DailyTaskActionBaseView):
 
         serializer = MissDailyTaskSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
-        daily_task.status = DailyTask.Status.MISSED
-        daily_task.missed_reason = serializer.validated_data.get("missed_reason", "")
-        daily_task.save(update_fields=["status", "missed_reason", "updated_at"])
+        daily_task = apply_daily_task_status(
+            daily_task,
+            DailyTask.Status.MISSED,
+            missed_reason=serializer.validated_data.get("missed_reason", ""),
+        )
         return Response(DailyTaskSerializer(daily_task).data)
 
 
@@ -208,8 +210,7 @@ class SkipDailyTaskView(DailyTaskActionBaseView):
         if daily_task is None:
             return Response({"detail": "Not found."}, status=status.HTTP_404_NOT_FOUND)
 
-        daily_task.status = DailyTask.Status.SKIPPED
-        daily_task.save(update_fields=["status", "updated_at"])
+        daily_task = apply_daily_task_status(daily_task, DailyTask.Status.SKIPPED)
         return Response(DailyTaskSerializer(daily_task).data)
 
 
@@ -253,5 +254,32 @@ class RescheduleDailyTaskView(DailyTaskActionBaseView):
             {
                 "original": DailyTaskSerializer(daily_task).data,
                 "new": DailyTaskSerializer(new_daily_task).data,
+            }
+        )
+
+
+class StreakListView(generics.ListAPIView):
+    permission_classes = [permissions.IsAuthenticated]
+    serializer_class = StreakSerializer
+    pagination_class = None
+
+    def get_queryset(self):
+        return Streak.objects.filter(user=self.request.user).select_related("category")
+
+
+class TodayDisciplineScoreView(APIView):
+    permission_classes = [permissions.IsAuthenticated]
+
+    def get(self, request):
+        today = timezone.localdate()
+        plan, _ = DailyPlan.objects.get_or_create(
+            user=request.user,
+            date=today,
+            defaults={"discipline_score": 100},
+        )
+        return Response(
+            {
+                "date": plan.date,
+                "discipline_score": plan.discipline_score,
             }
         )

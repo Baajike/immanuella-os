@@ -4,7 +4,7 @@ from rest_framework.exceptions import AuthenticationFailed
 from rest_framework_simplejwt.serializers import TokenObtainPairSerializer
 
 from .defaults import create_default_categories_for_user
-from .models import Category, DailyPlan, DailyTask, Task
+from .models import Category, DailyPlan, DailyTask, Streak, Task
 
 
 User = get_user_model()
@@ -151,6 +151,20 @@ class DailyTaskSerializer(serializers.ModelSerializer):
             "updated_at",
         ]
         read_only_fields = fields
+
+
+class StreakSerializer(serializers.ModelSerializer):
+    category = TaskCategorySerializer(read_only=True)
+
+    class Meta:
+        model = Streak
+        fields = [
+            "id",
+            "category",
+            "current_streak",
+            "longest_streak",
+            "last_completed_date",
+        ]
 
 
 class DailyPlanSerializer(serializers.ModelSerializer):

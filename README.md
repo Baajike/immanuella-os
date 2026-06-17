@@ -240,3 +240,24 @@ Skip a daily task:
 curl -X PATCH http://127.0.0.1:8000/api/v1/daily-plans/tasks/1/skip/ `
   -H "Authorization: Bearer YOUR_ACCESS_TOKEN"
 ```
+
+## Streaks and Discipline Score
+
+Streak and discipline score endpoints require a JWT access token.
+
+- `GET /api/v1/streaks/`
+- `GET /api/v1/discipline-score/today/`
+
+List your streaks:
+
+```powershell
+curl http://127.0.0.1:8000/api/v1/streaks/ `
+  -H "Authorization: Bearer YOUR_ACCESS_TOKEN"
+```
+
+Get today's discipline score:
+
+```powershell
+curl http://127.0.0.1:8000/api/v1/discipline-score/today/ `
+  -H "Authorization: Bearer YOUR_ACCESS_TOKEN"
+```
