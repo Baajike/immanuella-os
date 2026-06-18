@@ -2,15 +2,18 @@
 
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 
 import { ProtectedRoute } from "@/components/protected-route";
 import {
+  completeDailyTask,
   getNextRecommendation,
   getStreaks,
   getTodaysDailyPlan,
   getTodaysDisciplineScore,
   listWeeklyReviews,
+  missDailyTask,
+  skipDailyTask,
 } from "@/lib/api";
 import { clearTokens, getAccessToken } from "@/lib/auth";
 import type {
@@ -36,6 +39,8 @@ interface DashboardErrors {
   streaks?: string;
   weeklyReviews?: string;
 }
+
+type DailyTaskAction = "complete" | "missed" | "skip";
 
 const emptyDashboardData: DashboardData = {
   disciplineScore: null,
@@ -78,19 +83,25 @@ function DashboardContent({
   const [data, setData] = useState<DashboardData>(emptyDashboardData);
   const [errors, setErrors] = useState<DashboardErrors>({});
   const [isLoading, setIsLoading] = useState(true);
+  const [activeDailyTaskAction, setActiveDailyTaskAction] = useState<string | null>(null);
+  const [dailyTaskActionError, setDailyTaskActionError] = useState<string | null>(null);
+  const [dailyTaskActionSuccess, setDailyTaskActionSuccess] = useState<string | null>(
+    null,
+  );
 
-  useEffect(() => {
-    let isMounted = true;
-    const accessToken = getAccessToken();
+  const loadDashboard = useCallback(
+    async ({ showLoading = true }: { showLoading?: boolean } = {}) => {
+      const accessToken = getAccessToken();
 
-    if (!accessToken) {
-      setIsLoading(false);
-      return;
-    }
-    const token = accessToken;
+      if (!accessToken) {
+        setIsLoading(false);
+        return;
+      }
+      const token = accessToken;
 
-    async function loadDashboard() {
-      setIsLoading(true);
+      if (showLoading) {
+        setIsLoading(true);
+      }
       setErrors({});
 
       const [
@@ -106,10 +117,6 @@ function DashboardContent({
         getStreaks(token),
         listWeeklyReviews(token),
       ]);
-
-      if (!isMounted) {
-        return;
-      }
 
       setData({
         disciplineScore:
@@ -141,14 +148,44 @@ function DashboardContent({
             : undefined,
       });
       setIsLoading(false);
+    },
+    [],
+  );
+
+  useEffect(() => {
+    void loadDashboard();
+  }, [loadDashboard]);
+
+  async function handleDailyTaskAction(dailyTaskId: number, action: DailyTaskAction) {
+    const token = getAccessToken();
+    if (!token) {
+      setDailyTaskActionError("Your session is missing. Log in again to update tasks.");
+      return;
     }
 
-    void loadDashboard();
+    const actionKey = `${dailyTaskId}-${action}`;
 
-    return () => {
-      isMounted = false;
-    };
-  }, []);
+    try {
+      setActiveDailyTaskAction(actionKey);
+      setDailyTaskActionError(null);
+      setDailyTaskActionSuccess(null);
+
+      if (action === "complete") {
+        await completeDailyTask(token, dailyTaskId);
+      } else if (action === "missed") {
+        await missDailyTask(token, dailyTaskId);
+      } else {
+        await skipDailyTask(token, dailyTaskId);
+      }
+
+      setDailyTaskActionSuccess("Today's plan is updated.");
+      await loadDashboard({ showLoading: false });
+    } catch (caught) {
+      setDailyTaskActionError(getErrorMessage(caught));
+    } finally {
+      setActiveDailyTaskAction(null);
+    }
+  }
 
   const completedToday = useMemo(
     () =>
@@ -202,10 +239,14 @@ function DashboardContent({
               recommendation={data.recommendation}
             />
             <TodaysPlanCard
+              activeAction={activeDailyTaskAction}
+              actionError={dailyTaskActionError}
+              actionSuccess={dailyTaskActionSuccess}
               completedCount={completedToday}
               dailyPlan={data.dailyPlan}
               error={errors.dailyPlan}
               isLoading={isLoading}
+              onDailyTaskAction={handleDailyTaskAction}
             />
           </div>
 
@@ -334,11 +375,19 @@ function TodaysPlanCard({
   completedCount,
   error,
   isLoading,
+  onDailyTaskAction,
+  activeAction,
+  actionError,
+  actionSuccess,
 }: {
   dailyPlan: DailyPlan | null;
   completedCount: number;
   error?: string;
   isLoading: boolean;
+  onDailyTaskAction: (dailyTaskId: number, action: DailyTaskAction) => void;
+  activeAction: string | null;
+  actionError: string | null;
+  actionSuccess: string | null;
 }) {
   const dailyTasks = dailyPlan?.daily_tasks ?? [];
 
@@ -357,7 +406,7 @@ function TodaysPlanCard({
               <div className="space-y-3">
                 {dailyTasks.slice(0, 6).map((dailyTask) => (
                   <div
-                    className="flex flex-col gap-2 rounded-lg border border-white/10 bg-plum-950/50 p-3 sm:flex-row sm:items-center sm:justify-between"
+                    className="rounded-lg border border-white/10 bg-plum-950/50 p-3"
                     key={dailyTask.id}
                   >
                     <div>
@@ -370,9 +419,42 @@ function TodaysPlanCard({
                     <span className="w-fit rounded-full border border-white/10 px-3 py-1 text-xs capitalize text-[#d8cbd4]">
                       {dailyTask.status}
                     </span>
+                    <div className="mt-3 flex flex-wrap gap-2">
+                      <DailyTaskActionButton
+                        action="complete"
+                        activeAction={activeAction}
+                        dailyTaskId={dailyTask.id}
+                        label="Complete"
+                        onDailyTaskAction={onDailyTaskAction}
+                      />
+                      <DailyTaskActionButton
+                        action="missed"
+                        activeAction={activeAction}
+                        dailyTaskId={dailyTask.id}
+                        label="Missed"
+                        onDailyTaskAction={onDailyTaskAction}
+                      />
+                      <DailyTaskActionButton
+                        action="skip"
+                        activeAction={activeAction}
+                        dailyTaskId={dailyTask.id}
+                        label="Skip"
+                        onDailyTaskAction={onDailyTaskAction}
+                      />
+                    </div>
                   </div>
                 ))}
               </div>
+              {actionError ? (
+                <p className="mt-4 rounded-md border border-red-300/20 bg-red-500/10 px-3 py-2 text-sm text-red-100">
+                  {actionError}
+                </p>
+              ) : null}
+              {actionSuccess ? (
+                <p className="mt-4 rounded-md border border-emerald-300/20 bg-emerald-500/10 px-3 py-2 text-sm text-emerald-100">
+                  {actionSuccess}
+                </p>
+              ) : null}
               {dailyTasks.length > 6 ? (
                 <p className="mt-4 text-sm text-[#c7b8c3]">
                   Showing 6 of {dailyTasks.length}. The Today page will handle the full list.
@@ -387,6 +469,35 @@ function TodaysPlanCard({
         )}
       </SectionState>
     </DashboardCard>
+  );
+}
+
+function DailyTaskActionButton({
+  dailyTaskId,
+  action,
+  label,
+  activeAction,
+  onDailyTaskAction,
+}: {
+  dailyTaskId: number;
+  action: DailyTaskAction;
+  label: string;
+  activeAction: string | null;
+  onDailyTaskAction: (dailyTaskId: number, action: DailyTaskAction) => void;
+}) {
+  const actionKey = `${dailyTaskId}-${action}`;
+  const isActive = activeAction === actionKey;
+  const isAnyActionActive = activeAction !== null;
+
+  return (
+    <button
+      className="rounded-md border border-white/10 px-3 py-2 text-xs font-semibold text-[#fff8e7] transition hover:bg-white/[0.06] disabled:cursor-not-allowed disabled:opacity-60"
+      disabled={isAnyActionActive}
+      onClick={() => onDailyTaskAction(dailyTaskId, action)}
+      type="button"
+    >
+      {isActive ? "Updating..." : label}
+    </button>
   );
 }
 

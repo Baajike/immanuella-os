@@ -4,11 +4,19 @@ import Link from "next/link";
 import { FormEvent, useEffect, useMemo, useState } from "react";
 
 import { ProtectedRoute } from "@/components/protected-route";
-import { ApiError, createTask, listCategories, listTasks } from "@/lib/api";
+import {
+  ApiError,
+  addTaskToDailyPlan,
+  createTask,
+  getTodaysDailyPlan,
+  listCategories,
+  listTasks,
+} from "@/lib/api";
 import { getAccessToken } from "@/lib/auth";
 import type {
   Category,
   CreateTaskPayload,
+  DailyPlan,
   RepeatType,
   Task,
   TaskPriority,
@@ -27,6 +35,12 @@ const initialFormState = {
   repeat_type: "none" as RepeatType,
 };
 
+const initialScheduleFormState = {
+  task_id: "",
+  scheduled_start_time: "",
+  scheduled_end_time: "",
+};
+
 export default function TasksPage() {
   return (
     <ProtectedRoute>
@@ -38,11 +52,16 @@ export default function TasksPage() {
 function TasksContent() {
   const [tasks, setTasks] = useState<Task[]>([]);
   const [categories, setCategories] = useState<Category[]>([]);
+  const [dailyPlan, setDailyPlan] = useState<DailyPlan | null>(null);
   const [form, setForm] = useState(initialFormState);
+  const [scheduleForm, setScheduleForm] = useState(initialScheduleFormState);
   const [isLoading, setIsLoading] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isScheduling, setIsScheduling] = useState(false);
   const [loadError, setLoadError] = useState<string | null>(null);
   const [formError, setFormError] = useState<string | null>(null);
+  const [scheduleError, setScheduleError] = useState<string | null>(null);
+  const [scheduleSuccess, setScheduleSuccess] = useState<string | null>(null);
 
   async function loadPageData() {
     const token = getAccessToken();
@@ -55,12 +74,14 @@ function TasksContent() {
     try {
       setIsLoading(true);
       setLoadError(null);
-      const [taskPage, categoryPage] = await Promise.all([
+      const [taskPage, categoryPage, todayPlan] = await Promise.all([
         listTasks(token),
         listCategories(token),
+        getTodaysDailyPlan(token),
       ]);
       setTasks(taskPage.results);
       setCategories(categoryPage.results);
+      setDailyPlan(todayPlan);
     } catch (caught) {
       setLoadError(getErrorMessage(caught));
     } finally {
@@ -93,6 +114,35 @@ function TasksContent() {
     }
   }
 
+  async function handleScheduleSubmit(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    const token = getAccessToken();
+    if (!token) {
+      setScheduleError("Your session is missing. Log in again to schedule tasks.");
+      return;
+    }
+
+    const planDate = dailyPlan?.date ?? getTodayDate();
+
+    try {
+      setIsScheduling(true);
+      setScheduleError(null);
+      setScheduleSuccess(null);
+      await addTaskToDailyPlan(token, planDate, {
+        task_id: Number(scheduleForm.task_id),
+        scheduled_start_time: normalizeTimeInput(scheduleForm.scheduled_start_time),
+        scheduled_end_time: normalizeTimeInput(scheduleForm.scheduled_end_time),
+      });
+      setScheduleForm(initialScheduleFormState);
+      setScheduleSuccess("Added to today's plan.");
+      await loadPageData();
+    } catch (caught) {
+      setScheduleError(getErrorMessage(caught));
+    } finally {
+      setIsScheduling(false);
+    }
+  }
+
   const activeTaskCount = useMemo(
     () => tasks.filter((task) => task.is_active).length,
     [tasks],
@@ -122,14 +172,27 @@ function TasksContent() {
         </header>
 
         <section className="mt-6 grid gap-5 lg:grid-cols-[minmax(320px,0.8fr)_minmax(0,1.2fr)]">
-          <TaskForm
-            categories={categories}
-            form={form}
-            formError={formError}
-            isSubmitting={isSubmitting}
-            onChange={setForm}
-            onSubmit={handleSubmit}
-          />
+          <div className="grid gap-5">
+            <TaskForm
+              categories={categories}
+              form={form}
+              formError={formError}
+              isSubmitting={isSubmitting}
+              onChange={setForm}
+              onSubmit={handleSubmit}
+            />
+
+            <ScheduleTaskForm
+              dailyPlan={dailyPlan}
+              form={scheduleForm}
+              isScheduling={isScheduling}
+              onChange={setScheduleForm}
+              onSubmit={handleScheduleSubmit}
+              scheduleError={scheduleError}
+              scheduleSuccess={scheduleSuccess}
+              tasks={tasks}
+            />
+          </div>
 
           <TaskList
             activeTaskCount={activeTaskCount}
@@ -140,6 +203,122 @@ function TasksContent() {
         </section>
       </div>
     </main>
+  );
+}
+
+function ScheduleTaskForm({
+  dailyPlan,
+  form,
+  isScheduling,
+  onChange,
+  onSubmit,
+  scheduleError,
+  scheduleSuccess,
+  tasks,
+}: {
+  dailyPlan: DailyPlan | null;
+  form: typeof initialScheduleFormState;
+  isScheduling: boolean;
+  onChange: (value: typeof initialScheduleFormState) => void;
+  onSubmit: (event: FormEvent<HTMLFormElement>) => void;
+  scheduleError: string | null;
+  scheduleSuccess: string | null;
+  tasks: Task[];
+}) {
+  return (
+    <section className="rounded-lg border border-white/10 bg-white/[0.045] p-5 shadow-xl shadow-black/15">
+      <p className="text-xs font-semibold uppercase tracking-[0.16em] text-parchment-200">
+        Today
+      </p>
+      <h2 className="mt-2 text-xl font-semibold text-[#fff8e7]">Schedule into today</h2>
+      <p className="mt-2 text-sm leading-6 text-[#c7b8c3]">
+        Pick an existing task and give it a start and end time for today.
+      </p>
+
+      <form className="mt-5 space-y-4" onSubmit={onSubmit}>
+        <label className="block text-sm font-medium text-[#fff8e7]">
+          Task
+          <select
+            className="mt-2 w-full rounded-md border border-white/10 bg-plum-950/80 px-3 py-3 text-sm text-[#fff8e7] outline-none ring-parchment-200/40 transition focus:border-parchment-200 focus:ring-2"
+            onChange={(event) => onChange({ ...form, task_id: event.target.value })}
+            required
+            value={form.task_id}
+          >
+            <option value="">Choose a task</option>
+            {tasks.map((task) => (
+              <option key={task.id} value={task.id}>
+                {task.title}
+              </option>
+            ))}
+          </select>
+        </label>
+
+        <div className="grid gap-4 sm:grid-cols-2">
+          <TextInput
+            label="Start time"
+            onChange={(scheduled_start_time) => onChange({ ...form, scheduled_start_time })}
+            required
+            type="time"
+            value={form.scheduled_start_time}
+          />
+          <TextInput
+            label="End time"
+            onChange={(scheduled_end_time) => onChange({ ...form, scheduled_end_time })}
+            required
+            type="time"
+            value={form.scheduled_end_time}
+          />
+        </div>
+
+        {scheduleError ? (
+          <p className="rounded-md border border-red-300/20 bg-red-500/10 px-3 py-2 text-sm text-red-100">
+            {scheduleError}
+          </p>
+        ) : null}
+        {scheduleSuccess ? (
+          <p className="rounded-md border border-emerald-300/20 bg-emerald-500/10 px-3 py-2 text-sm text-emerald-100">
+            {scheduleSuccess}
+          </p>
+        ) : null}
+
+        <button
+          className="w-full rounded-md bg-[#f0c36a] px-4 py-3 text-sm font-semibold text-plum-950 transition hover:bg-[#f4d58a] disabled:cursor-not-allowed disabled:opacity-70"
+          disabled={isScheduling || !tasks.length}
+          type="submit"
+        >
+          {isScheduling ? "Scheduling..." : "Add to today's plan"}
+        </button>
+      </form>
+
+      <div className="mt-5 border-t border-white/10 pt-4">
+        <p className="text-sm font-medium text-[#fff8e7]">
+          Today{dailyPlan?.date ? `, ${dailyPlan.date}` : ""}
+        </p>
+        {dailyPlan?.daily_tasks.length ? (
+          <div className="mt-3 space-y-2">
+            {dailyPlan.daily_tasks.slice(0, 4).map((dailyTask) => (
+              <div
+                className="rounded-md border border-white/10 bg-plum-950/50 px-3 py-2 text-sm text-[#d8cbd4]"
+                key={dailyTask.id}
+              >
+                <span className="font-medium text-[#fff8e7]">{dailyTask.task.title}</span>
+                <span className="ml-2 text-xs text-[#c7b8c3]">
+                  {formatTimeRange(
+                    dailyTask.scheduled_start_time,
+                    dailyTask.scheduled_end_time,
+                  )}{" "}
+                  - {dailyTask.status}
+                </span>
+              </div>
+            ))}
+          </div>
+        ) : (
+          <p className="mt-2 text-sm leading-6 text-[#c7b8c3]">
+            Nothing scheduled yet. Choose a task above and give it a time block.
+          </p>
+        )}
+      </div>
+    </section>
   );
 }
 
@@ -390,6 +569,27 @@ function buildCreatePayload(form: typeof initialFormState): CreateTaskPayload {
     repeat_type: form.repeat_type,
     repeat_days: null,
   };
+}
+
+function normalizeTimeInput(value: string) {
+  if (!value) {
+    return null;
+  }
+  return value.length === 5 ? `${value}:00` : value;
+}
+
+function formatTimeRange(start: string | null, end: string | null) {
+  if (start && end) {
+    return `${start.slice(0, 5)}-${end.slice(0, 5)}`;
+  }
+  if (start) {
+    return start.slice(0, 5);
+  }
+  return "Unscheduled";
+}
+
+function getTodayDate() {
+  return new Date().toISOString().slice(0, 10);
 }
 
 function getErrorMessage(caught: unknown) {
