@@ -116,10 +116,11 @@ The frontend includes simple auth pages:
 - `http://localhost:3000/dashboard`
 - `http://localhost:3000/today`
 - `http://localhost:3000/tasks`
+- `http://localhost:3000/weekly-reviews`
 
 Successful login stores access and refresh tokens in `localStorage` for MVP development. Registration creates the user, logs in with the submitted credentials, stores tokens, and redirects to the protected dashboard. The dashboard fetches the current user, today's discipline score, next recommendation, today's plan, streaks, and recent weekly reviews.
 
-The protected Today page shows the full daily plan, next recommendation, discipline score, quick complete/missed/skip actions, and simple rescheduling for each daily task. The protected task page lists the authenticated user's tasks, supports basic task creation with category, priority, duration, due date, and repeat type, and can schedule an existing task into today's daily plan with a start and end time. The dashboard today's plan card supports quick complete, missed, and skip actions, then refreshes the plan, discipline score, recommendation, and streaks.
+The protected Today page shows the full daily plan, next recommendation, discipline score, quick complete/missed/skip actions, and simple rescheduling for each daily task. The protected task page lists the authenticated user's tasks, supports basic task creation with category, priority, duration, due date, and repeat type, and can schedule an existing task into today's daily plan with a start and end time. The protected Weekly Reviews page lists review history and can generate the current week or a selected Monday-to-Sunday week. The dashboard provides navigation to each of these workflows.
 
 ## Auth Endpoints
 

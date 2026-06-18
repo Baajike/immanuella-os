@@ -5,8 +5,8 @@ between Codex (execution) and Claude (architecture/review). Update it after
 each Codex prompt completes and review is done.
 
 **Last updated**: 2026-06-18
-**Current phase**: Phase 5 - Frontend Dashboard
-**Current prompt**: 5.3 - Today page
+**Current phase**: Phase 6 - Weekly Review
+**Current prompt**: 6.2 - Weekly review page
 
 ---
 
@@ -94,11 +94,12 @@ each Codex prompt completes and review is done.
 ## Phase 6 - Weekly Review
 
 - [x] 6.1 - Weekly review generation (backend)
-- [ ] 6.2 - Weekly review page (frontend)
+- [x] 6.2 - Weekly review page (frontend)
 
 **Notes**:
 - 2026-06-17: Added authenticated Weekly Review API at `/api/v1/weekly-reviews/`: generate current week, generate by week start date, list owned reviews, and retrieve owned review details. Reviews aggregate Monday-to-Sunday DailyTask counts, strongest/weakest categories, weekly score, completion rate, skipped count as a computed response field, and rule-based summary text. Frontend, AI, auth behavior changes, and Never Miss Twice warning were not added. Next recommended prompt: implement Never Miss Twice warning before building the weekly review frontend.
 - 2026-06-17: Backend MVP review and cleanup completed. URL organization, serializers, views, services, tests, README endpoint docs, and STATUS were reviewed; only a harmless unused import and stale status checkbox needed cleanup. Public API behavior was unchanged.
+- 2026-06-18: Added protected `/weekly-reviews` page with review history, current-week generation, specific `week_start_date` generation, full review metrics/categories/summary, and loading, empty, success, and error states. Added shared generation API helpers and dashboard navigation. Charts, AI features, and advanced state libraries were not added. Next recommended prompt: build the frontend streaks page or implement the pending Never Miss Twice warning.
 
 ---
 

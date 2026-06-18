@@ -210,7 +210,7 @@ function DashboardContent({
               latest weekly review.
             </p>
           </div>
-          <div className="flex items-center gap-3 rounded-lg border border-white/10 bg-white/[0.04] p-3">
+          <div className="flex flex-wrap items-center gap-3 rounded-lg border border-white/10 bg-white/[0.04] p-3">
             <div className="min-w-0">
               <p className="truncate text-sm font-medium text-[#fff8e7]">{email}</p>
               <p className="text-xs text-[#c7b8c3]">Signed in</p>
@@ -226,6 +226,12 @@ function DashboardContent({
               href="/tasks"
             >
               Tasks
+            </Link>
+            <Link
+              className="rounded-md border border-white/15 px-3 py-2 text-sm font-semibold text-[#fff8e7] transition hover:bg-white/[0.06]"
+              href="/weekly-reviews"
+            >
+              Reviews
             </Link>
             <button
               className="rounded-md bg-parchment-100 px-3 py-2 text-sm font-semibold text-plum-950 transition hover:bg-parchment-200"

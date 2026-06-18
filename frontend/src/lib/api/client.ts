@@ -214,3 +214,20 @@ export function listWeeklyReviews(accessToken: string) {
     accessToken,
   });
 }
+
+export function generateWeeklyReview(accessToken: string) {
+  return apiRequest<WeeklyReview>("/weekly-reviews/generate/", {
+    accessToken,
+    method: "POST",
+  });
+}
+
+export function generateWeeklyReviewForWeek(
+  accessToken: string,
+  weekStartDate: string,
+) {
+  return apiRequest<WeeklyReview>(`/weekly-reviews/generate/${weekStartDate}/`, {
+    accessToken,
+    method: "POST",
+  });
+}

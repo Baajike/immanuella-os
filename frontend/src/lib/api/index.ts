@@ -5,6 +5,8 @@ export {
   buildApiUrl,
   completeDailyTask,
   createTask,
+  generateWeeklyReview,
+  generateWeeklyReviewForWeek,
   getCurrentUser,
   getNextRecommendation,
   getStreaks,
