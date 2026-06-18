@@ -18,6 +18,11 @@ import type {
   User,
   WeeklyReview,
 } from "@/types";
+import {
+  clearTokens,
+  getRefreshToken,
+  saveAccessToken,
+} from "@/lib/auth/tokens";
 
 export const API_BASE_URL =
   process.env.NEXT_PUBLIC_API_BASE_URL ?? "http://127.0.0.1:8000/api/v1";
@@ -40,12 +45,18 @@ interface ApiRequestOptions extends Omit<RequestInit, "body" | "headers"> {
   headers?: HeadersInit;
 }
 
+let refreshRequest: Promise<string | null> | null = null;
+
 export function buildApiUrl(path: string) {
   const normalizedPath = path.startsWith("/") ? path : `/${path}`;
   return `${API_BASE_URL}${normalizedPath}`;
 }
 
-async function apiRequest<T>(path: string, options: ApiRequestOptions = {}) {
+async function apiRequest<T>(
+  path: string,
+  options: ApiRequestOptions = {},
+  allowTokenRefresh = true,
+) {
   const { accessToken, body, headers, ...requestOptions } = options;
   const requestHeaders = new Headers(headers);
 
@@ -69,10 +80,66 @@ async function apiRequest<T>(path: string, options: ApiRequestOptions = {}) {
   const data = await readJson(response);
 
   if (!response.ok) {
+    if (response.status === 401 && accessToken && allowTokenRefresh) {
+      const refreshedAccessToken = await getRefreshedAccessToken();
+      if (refreshedAccessToken) {
+        return apiRequest<T>(
+          path,
+          { ...options, accessToken: refreshedAccessToken },
+          false,
+        );
+      }
+    }
     throw new ApiError(getErrorMessage(data, response.status), response.status, data);
   }
 
   return data as T;
+}
+
+async function getRefreshedAccessToken() {
+  if (!refreshRequest) {
+    refreshRequest = refreshStoredAccessToken().finally(() => {
+      refreshRequest = null;
+    });
+  }
+
+  return refreshRequest;
+}
+
+async function refreshStoredAccessToken() {
+  const refreshToken = getRefreshToken();
+  if (!refreshToken) {
+    clearTokens();
+    return null;
+  }
+
+  try {
+    const response = await fetch(buildApiUrl("/auth/token/refresh/"), {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ refresh: refreshToken }),
+    });
+    const data = await readJson(response);
+
+    if (!response.ok || !hasAccessToken(data)) {
+      clearTokens();
+      return null;
+    }
+
+    saveAccessToken(data.access);
+    return data.access;
+  } catch {
+    return null;
+  }
+}
+
+function hasAccessToken(data: unknown): data is { access: string } {
+  return (
+    typeof data === "object" &&
+    data !== null &&
+    "access" in data &&
+    typeof data.access === "string"
+  );
 }
 
 async function readJson(response: Response) {
@@ -100,6 +167,13 @@ function getErrorMessage(data: unknown, status: number) {
     }
     if (body.detail) {
       return body.detail;
+    }
+
+    for (const [field, messages] of Object.entries(body)) {
+      if (Array.isArray(messages) && typeof messages[0] === "string") {
+        const label = field.split("_").join(" ");
+        return `${label}: ${messages[0]}`;
+      }
     }
   }
 

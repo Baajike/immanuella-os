@@ -1,8 +1,8 @@
 "use client";
 
-import Link from "next/link";
 import { FormEvent, useEffect, useMemo, useState } from "react";
 
+import { AppNavigation } from "@/components/app-navigation";
 import { ProtectedRoute } from "@/components/protected-route";
 import {
   ApiError,
@@ -163,12 +163,7 @@ function TasksContent() {
               Create task templates with category, priority, duration, due date, and repeat style.
             </p>
           </div>
-          <Link
-            className="w-fit rounded-md border border-white/15 px-4 py-3 text-sm font-semibold text-[#fff8e7] transition hover:bg-white/[0.06]"
-            href="/dashboard"
-          >
-            Back to dashboard
-          </Link>
+          <AppNavigation current="tasks" />
         </header>
 
         <section className="mt-6 grid gap-5 lg:grid-cols-[minmax(320px,0.8fr)_minmax(0,1.2fr)]">

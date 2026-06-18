@@ -5,8 +5,8 @@ between Codex (execution) and Claude (architecture/review). Update it after
 each Codex prompt completes and review is done.
 
 **Last updated**: 2026-06-18
-**Current phase**: Phase 6 - Weekly Review
-**Current prompt**: 6.2 - Weekly review page
+**Current phase**: MVP QA
+**Current prompt**: Full integration and bug-fix pass
 
 ---
 
@@ -75,7 +75,7 @@ each Codex prompt completes and review is done.
 - [x] 5.1 - Frontend scaffold + auth
 - [x] 5.2 - Dashboard page
 - [x] 5.3 - Today page
-- [x] 5.4 - Task management page
+- [ ] 5.4 - Task management page (create/list complete; edit/delete pending)
 - [ ] 5.5 - Streaks page
 - [x] 5b - Recommendation logic (backend)
 
@@ -88,6 +88,8 @@ each Codex prompt completes and review is done.
 - 2026-06-17: Added protected `/tasks` page with authenticated task list, category loading, and basic task creation for title, description, category, priority, estimated duration, due date, and repeat type. Added dashboard navigation to Tasks and a `createTask` API helper. Edit/delete task UI, daily plan scheduling UI, and AI features were not added. Next recommended prompt: build the Today page.
 - 2026-06-17: Added frontend daily plan scheduling foundation. The `/tasks` page can schedule an existing task into today's plan with start/end times, and the dashboard today's plan card can mark daily tasks complete, missed, or skipped while refreshing the plan, score, recommendation, and streaks. A dedicated Today page, drag-and-drop calendar UI, task edit/delete UI, and AI features were not added. Next recommended prompt: build the dedicated Today page or streaks page.
 - 2026-06-18: Added protected `/today` page for managing today's plan. It fetches today's daily plan, next recommendation, and discipline score; displays all scheduled daily tasks; supports complete, missed, skip, and same-day reschedule actions; and refreshes the plan, recommendation, and score after updates. Drag-and-drop, full calendar UI, frontend streaks page, weekly review page, and AI features were not added. Next recommended prompt: build the frontend streaks page or weekly review page.
+- 2026-06-18: Polished the frontend theme with a near-black plum canvas while preserving warm cream/gold accents and parchment recommendation cards. Added consistent Dashboard, Today, Tasks, and Reviews navigation across protected pages. Moved dashboard logout into a separate account menu with an explicit inline confirmation step. No API, backend, business feature, or AI behavior changed.
+- 2026-06-18: MVP QA aligned backend routes with frontend API helpers and fixed frontend auth resilience: expired access tokens now use the stored refresh token once, concurrent refresh attempts are deduplicated, transient current-user failures show a retry state instead of redirecting to Login, and DRF field validation errors display useful messages. Corrected stale README setup/auth notes and the Task Management status checkbox. Remaining roadmap gaps are Task edit/delete UI, the frontend Streaks page, and Never Miss Twice warning behavior.
 
 ---
 

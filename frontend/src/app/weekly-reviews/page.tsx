@@ -1,8 +1,8 @@
 "use client";
 
-import Link from "next/link";
 import { FormEvent, useCallback, useEffect, useState } from "react";
 
+import { AppNavigation } from "@/components/app-navigation";
 import { ProtectedRoute } from "@/components/protected-route";
 import {
   ApiError,
@@ -121,20 +121,7 @@ function WeeklyReviewsContent() {
               Generate a review, see what held, and decide where the next week needs more care.
             </p>
           </div>
-          <div className="flex flex-wrap gap-3">
-            <Link
-              className="rounded-md border border-white/15 px-4 py-3 text-sm font-semibold text-[#fff8e7] transition hover:bg-white/[0.06]"
-              href="/dashboard"
-            >
-              Dashboard
-            </Link>
-            <Link
-              className="rounded-md bg-parchment-100 px-4 py-3 text-sm font-semibold text-plum-950 transition hover:bg-parchment-200"
-              href="/today"
-            >
-              Today
-            </Link>
-          </div>
+          <AppNavigation current="weekly-reviews" />
         </header>
 
         <section className="mt-6 grid gap-5 lg:grid-cols-[minmax(300px,0.7fr)_minmax(0,1.3fr)]">

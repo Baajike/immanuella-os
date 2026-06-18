@@ -1,9 +1,9 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import Link from "next/link";
 import { useCallback, useEffect, useMemo, useState } from "react";
 
+import { AppNavigation } from "@/components/app-navigation";
 import { ProtectedRoute } from "@/components/protected-route";
 import {
   completeDailyTask,
@@ -210,36 +210,9 @@ function DashboardContent({
               latest weekly review.
             </p>
           </div>
-          <div className="flex flex-wrap items-center gap-3 rounded-lg border border-white/10 bg-white/[0.04] p-3">
-            <div className="min-w-0">
-              <p className="truncate text-sm font-medium text-[#fff8e7]">{email}</p>
-              <p className="text-xs text-[#c7b8c3]">Signed in</p>
-            </div>
-            <Link
-              className="rounded-md border border-white/15 px-3 py-2 text-sm font-semibold text-[#fff8e7] transition hover:bg-white/[0.06]"
-              href="/today"
-            >
-              Today
-            </Link>
-            <Link
-              className="rounded-md border border-white/15 px-3 py-2 text-sm font-semibold text-[#fff8e7] transition hover:bg-white/[0.06]"
-              href="/tasks"
-            >
-              Tasks
-            </Link>
-            <Link
-              className="rounded-md border border-white/15 px-3 py-2 text-sm font-semibold text-[#fff8e7] transition hover:bg-white/[0.06]"
-              href="/weekly-reviews"
-            >
-              Reviews
-            </Link>
-            <button
-              className="rounded-md bg-parchment-100 px-3 py-2 text-sm font-semibold text-plum-950 transition hover:bg-parchment-200"
-              onClick={onLogout}
-              type="button"
-            >
-              Log out
-            </button>
+          <div className="flex flex-col items-start gap-3 sm:items-end">
+            <AppNavigation current="dashboard" />
+            <AccountMenu email={email} onLogout={onLogout} />
           </div>
         </header>
 
@@ -278,6 +251,89 @@ function DashboardContent({
         </section>
       </div>
     </main>
+  );
+}
+
+function AccountMenu({ email, onLogout }: { email: string; onLogout: () => void }) {
+  const [isOpen, setIsOpen] = useState(false);
+  const [isConfirmingLogout, setIsConfirmingLogout] = useState(false);
+
+  function closeMenu() {
+    setIsOpen(false);
+    setIsConfirmingLogout(false);
+  }
+
+  return (
+    <div className="relative">
+      <button
+        aria-expanded={isOpen}
+        aria-haspopup="menu"
+        className="rounded-md border border-white/10 bg-white/[0.025] px-3 py-2 text-sm text-[#d8cbd4] transition hover:border-white/20 hover:bg-white/[0.06] hover:text-[#fff8e7]"
+        onClick={() => {
+          setIsOpen((current) => !current);
+          setIsConfirmingLogout(false);
+        }}
+        type="button"
+      >
+        Account
+      </button>
+
+      {isOpen ? (
+        <div
+          className="absolute right-0 z-20 mt-2 w-72 rounded-lg border border-white/15 bg-[#161016] p-4 shadow-2xl shadow-black/50"
+          role="menu"
+        >
+          <p className="text-xs font-semibold uppercase tracking-[0.14em] text-[#a996a3]">
+            Signed in as
+          </p>
+          <p className="mt-2 break-all text-sm font-medium text-[#fff8e7]">{email}</p>
+
+          <div className="mt-4 border-t border-white/10 pt-4">
+            {isConfirmingLogout ? (
+              <div>
+                <p className="text-sm leading-6 text-[#d8cbd4]">
+                  Log out of ImmanuellaOS on this device?
+                </p>
+                <div className="mt-3 flex gap-2">
+                  <button
+                    className="flex-1 rounded-md border border-white/15 px-3 py-2 text-sm font-semibold text-[#fff8e7] transition hover:bg-white/[0.06]"
+                    onClick={() => setIsConfirmingLogout(false)}
+                    type="button"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    className="flex-1 rounded-md border border-red-300/30 bg-red-500/10 px-3 py-2 text-sm font-semibold text-red-100 transition hover:bg-red-500/20"
+                    onClick={onLogout}
+                    type="button"
+                  >
+                    Log out
+                  </button>
+                </div>
+              </div>
+            ) : (
+              <div className="flex items-center justify-between gap-3">
+                <button
+                  className="text-sm font-semibold text-red-200 transition hover:text-red-100"
+                  onClick={() => setIsConfirmingLogout(true)}
+                  role="menuitem"
+                  type="button"
+                >
+                  Log out
+                </button>
+                <button
+                  className="text-sm text-[#a996a3] transition hover:text-[#fff8e7]"
+                  onClick={closeMenu}
+                  type="button"
+                >
+                  Close
+                </button>
+              </div>
+            )}
+          </div>
+        </div>
+      ) : null}
+    </div>
   );
 }
 

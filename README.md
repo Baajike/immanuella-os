@@ -77,7 +77,7 @@ Copy `frontend/.env.example` to `frontend/.env.local`.
 NEXT_PUBLIC_API_BASE_URL=http://127.0.0.1:8000/api/v1
 ```
 
-The frontend scaffold does not call the backend yet; this value is prepared for the API client in the next phase.
+The frontend uses this value for all authenticated API calls. Keep both local servers running while using the app.
 
 ### 3. Start the frontend server
 
@@ -105,7 +105,7 @@ const tokens = await login({ email, password });
 const user = await getCurrentUser(tokens.access);
 ```
 
-The client supports passing JWT access tokens through `Authorization: Bearer ...` headers. Token storage and React auth context are intentionally deferred to the auth UI phase.
+The client sends JWT access tokens through `Authorization: Bearer ...` headers. Access and refresh tokens are stored in `localStorage` for the MVP, and authenticated requests retry once through the token refresh endpoint when an access token expires.
 
 ### Frontend auth flow
 
