@@ -217,6 +217,12 @@ function DashboardContent({
             </div>
             <Link
               className="rounded-md border border-white/15 px-3 py-2 text-sm font-semibold text-[#fff8e7] transition hover:bg-white/[0.06]"
+              href="/today"
+            >
+              Today
+            </Link>
+            <Link
+              className="rounded-md border border-white/15 px-3 py-2 text-sm font-semibold text-[#fff8e7] transition hover:bg-white/[0.06]"
               href="/tasks"
             >
               Tasks

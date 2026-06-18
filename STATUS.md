@@ -4,7 +4,7 @@ This file tracks build progress across phases and serves as the handoff point
 between Codex (execution) and Claude (architecture/review). Update it after
 each Codex prompt completes and review is done.
 
-**Last updated**: 2026-06-17
+**Last updated**: 2026-06-18
 **Current phase**: Phase 5 - Frontend Dashboard
 **Current prompt**: 5.3 - Today page
 
@@ -74,7 +74,7 @@ each Codex prompt completes and review is done.
 
 - [x] 5.1 - Frontend scaffold + auth
 - [x] 5.2 - Dashboard page
-- [ ] 5.3 - Today page
+- [x] 5.3 - Today page
 - [x] 5.4 - Task management page
 - [ ] 5.5 - Streaks page
 - [x] 5b - Recommendation logic (backend)
@@ -86,6 +86,8 @@ each Codex prompt completes and review is done.
 - 2026-06-17: Added frontend auth UI and token handling: `/login`, `/register`, localStorage token helpers, current-user hook, logout behavior, and a minimal protected `/dashboard` placeholder. Full dashboard widgets, task management UI, and AI features were not added. Next recommended prompt: build the dashboard page using the existing API client.
 - 2026-06-17: Replaced the protected `/dashboard` placeholder with the first real dashboard screen. It fetches current user, discipline score, next recommendation, today's daily plan, streaks, and recent weekly reviews, with responsive cards plus loading, empty, and per-section error states. Task creation, category management, weekly review generation UI, and AI features were not added. Next recommended prompt: build the Today page.
 - 2026-06-17: Added protected `/tasks` page with authenticated task list, category loading, and basic task creation for title, description, category, priority, estimated duration, due date, and repeat type. Added dashboard navigation to Tasks and a `createTask` API helper. Edit/delete task UI, daily plan scheduling UI, and AI features were not added. Next recommended prompt: build the Today page.
+- 2026-06-17: Added frontend daily plan scheduling foundation. The `/tasks` page can schedule an existing task into today's plan with start/end times, and the dashboard today's plan card can mark daily tasks complete, missed, or skipped while refreshing the plan, score, recommendation, and streaks. A dedicated Today page, drag-and-drop calendar UI, task edit/delete UI, and AI features were not added. Next recommended prompt: build the dedicated Today page or streaks page.
+- 2026-06-18: Added protected `/today` page for managing today's plan. It fetches today's daily plan, next recommendation, and discipline score; displays all scheduled daily tasks; supports complete, missed, skip, and same-day reschedule actions; and refreshes the plan, recommendation, and score after updates. Drag-and-drop, full calendar UI, frontend streaks page, weekly review page, and AI features were not added. Next recommended prompt: build the frontend streaks page or weekly review page.
 
 ---
 
