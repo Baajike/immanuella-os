@@ -4,9 +4,9 @@ This file tracks build progress across phases and serves as the handoff point
 between Codex (execution) and Claude (architecture/review). Update it after
 each Codex prompt completes and review is done.
 
-**Last updated**: 2026-06-18
-**Current phase**: MVP QA
-**Current prompt**: Full integration and bug-fix pass
+**Last updated**: 2026-06-19
+**Current phase**: Phase 4 - Streaks and Discipline Score
+**Current prompt**: Never Miss Twice warning complete
 
 ---
 
@@ -63,10 +63,11 @@ each Codex prompt completes and review is done.
 
 - [x] 4.1 - Streak model + update logic
 - [x] 4.2 - Discipline score logic
-- [ ] 4.3 - Never Miss Twice warning
+- [x] 4.3 - Never Miss Twice warning
 
 **Notes**:
 - 2026-06-17: Added idempotent discipline score updates for complete/miss/skip, streak updates on completion, `/api/v1/streaks/`, and `/api/v1/discipline-score/today/`. Added `DailyTask.score_applied_status` migration for deterministic score application. Weekly review, frontend, AI, and Never Miss Twice warning were not added. Next recommended prompt: implement Never Miss Twice warning.
+- 2026-06-19: Added deterministic Never Miss Twice detection for categorized tasks missed on both today and yesterday, exposed through authenticated `GET /api/v1/warnings/never-miss-twice/`. Added seven isolation/rule tests, typed frontend API support, and a restrained dashboard warning banner that refreshes with dashboard task actions. Phase 4 is complete. Next recommended prompt: run a final MVP QA and demo-readiness pass.
 
 ---
 
@@ -75,8 +76,8 @@ each Codex prompt completes and review is done.
 - [x] 5.1 - Frontend scaffold + auth
 - [x] 5.2 - Dashboard page
 - [x] 5.3 - Today page
-- [ ] 5.4 - Task management page (create/list complete; edit/delete pending)
-- [ ] 5.5 - Streaks page
+- [x] 5.4 - Task management page
+- [x] 5.5 - Streaks page
 - [x] 5b - Recommendation logic (backend)
 
 **Notes**:
@@ -90,6 +91,8 @@ each Codex prompt completes and review is done.
 - 2026-06-18: Added protected `/today` page for managing today's plan. It fetches today's daily plan, next recommendation, and discipline score; displays all scheduled daily tasks; supports complete, missed, skip, and same-day reschedule actions; and refreshes the plan, recommendation, and score after updates. Drag-and-drop, full calendar UI, frontend streaks page, weekly review page, and AI features were not added. Next recommended prompt: build the frontend streaks page or weekly review page.
 - 2026-06-18: Polished the frontend theme with a near-black plum canvas while preserving warm cream/gold accents and parchment recommendation cards. Added consistent Dashboard, Today, Tasks, and Reviews navigation across protected pages. Moved dashboard logout into a separate account menu with an explicit inline confirmation step. No API, backend, business feature, or AI behavior changed.
 - 2026-06-18: MVP QA aligned backend routes with frontend API helpers and fixed frontend auth resilience: expired access tokens now use the stored refresh token once, concurrent refresh attempts are deduplicated, transient current-user failures show a retry state instead of redirecting to Login, and DRF field validation errors display useful messages. Fixed a date-dependent recommendation test, corrected stale README setup/auth notes, and corrected the Task Management status checkbox. Django check, all 61 backend tests, migrations, frontend lint, and frontend production build pass. Remaining roadmap gaps are Task edit/delete UI, the frontend Streaks page, and Never Miss Twice warning behavior.
+- 2026-06-19: Completed the protected task management page with inline editing for all supported task fields, active/inactive control, and confirmed deletion. Added typed `updateTask` and `deleteTask` API helpers; both actions refresh the task list and show progress, success, and error states. Next recommended prompt: build the protected frontend Streaks page.
+- 2026-06-19: Added the protected `/streaks` page and shared navigation link. The page uses the existing authenticated streaks API to show category, current and longest streaks, last completion date, summary totals, a strongest-streak highlight, and loading/error/empty states. Phase 5 frontend screens are now complete. Next recommended prompt: implement the remaining Never Miss Twice warning behavior from Phase 4.3.
 
 ---
 

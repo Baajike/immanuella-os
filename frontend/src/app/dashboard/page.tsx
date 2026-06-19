@@ -7,6 +7,7 @@ import { AppNavigation } from "@/components/app-navigation";
 import { ProtectedRoute } from "@/components/protected-route";
 import {
   completeDailyTask,
+  getNeverMissTwiceWarnings,
   getNextRecommendation,
   getStreaks,
   getTodaysDailyPlan,
@@ -19,6 +20,7 @@ import { clearTokens, getAccessToken } from "@/lib/auth";
 import type {
   DailyPlan,
   DisciplineScore,
+  NeverMissTwiceWarningResponse,
   Recommendation,
   Streak,
   WeeklyReview,
@@ -30,6 +32,7 @@ interface DashboardData {
   dailyPlan: DailyPlan | null;
   streaks: Streak[];
   weeklyReviews: WeeklyReview[];
+  neverMissTwice: NeverMissTwiceWarningResponse | null;
 }
 
 interface DashboardErrors {
@@ -38,6 +41,7 @@ interface DashboardErrors {
   dailyPlan?: string;
   streaks?: string;
   weeklyReviews?: string;
+  neverMissTwice?: string;
 }
 
 type DailyTaskAction = "complete" | "missed" | "skip";
@@ -48,6 +52,7 @@ const emptyDashboardData: DashboardData = {
   dailyPlan: null,
   streaks: [],
   weeklyReviews: [],
+  neverMissTwice: null,
 };
 
 export default function DashboardPage() {
@@ -110,12 +115,14 @@ function DashboardContent({
         dailyPlan,
         streaks,
         weeklyReviews,
+        neverMissTwice,
       ] = await Promise.allSettled([
         getTodaysDisciplineScore(token),
         getNextRecommendation(token),
         getTodaysDailyPlan(token),
         getStreaks(token),
         listWeeklyReviews(token),
+        getNeverMissTwiceWarnings(token),
       ]);
 
       setData({
@@ -127,6 +134,8 @@ function DashboardContent({
         streaks: streaks.status === "fulfilled" ? streaks.value : [],
         weeklyReviews:
           weeklyReviews.status === "fulfilled" ? weeklyReviews.value.results : [],
+        neverMissTwice:
+          neverMissTwice.status === "fulfilled" ? neverMissTwice.value : null,
       });
 
       setErrors({
@@ -145,6 +154,10 @@ function DashboardContent({
         weeklyReviews:
           weeklyReviews.status === "rejected"
             ? getErrorMessage(weeklyReviews.reason)
+            : undefined,
+        neverMissTwice:
+          neverMissTwice.status === "rejected"
+            ? getErrorMessage(neverMissTwice.reason)
             : undefined,
       });
       setIsLoading(false);
@@ -216,6 +229,12 @@ function DashboardContent({
           </div>
         </header>
 
+        <NeverMissTwiceBanner
+          error={errors.neverMissTwice}
+          isLoading={isLoading}
+          warningResponse={data.neverMissTwice}
+        />
+
         <section className="mt-6 grid gap-5 lg:grid-cols-[minmax(0,1.25fr)_minmax(320px,0.75fr)]">
           <div className="grid gap-5">
             <RecommendationCard
@@ -251,6 +270,63 @@ function DashboardContent({
         </section>
       </div>
     </main>
+  );
+}
+
+function NeverMissTwiceBanner({
+  warningResponse,
+  error,
+  isLoading,
+}: {
+  warningResponse: NeverMissTwiceWarningResponse | null;
+  error?: string;
+  isLoading: boolean;
+}) {
+  if (isLoading) {
+    return null;
+  }
+
+  if (error) {
+    return (
+      <p className="mt-4 text-xs text-[#a996a3]">
+        The consistency warning could not be checked right now.
+      </p>
+    );
+  }
+
+  if (!warningResponse?.has_warning || !warningResponse.warnings.length) {
+    return null;
+  }
+
+  return (
+    <section
+      aria-label="Never Miss Twice warnings"
+      className="mt-6 rounded-lg border border-[#f0c36a]/45 bg-[#2a1a22] p-5 shadow-xl shadow-black/20"
+    >
+      <p className="text-xs font-semibold uppercase tracking-[0.16em] text-parchment-200">
+        Never Miss Twice
+      </p>
+      <div className="mt-3 space-y-4">
+        {warningResponse.warnings.map((warning) => (
+          <article key={warning.category.id}>
+            <div className="flex items-center gap-2">
+              <span
+                aria-hidden="true"
+                className="h-2.5 w-2.5 rounded-full border border-white/15"
+                style={{ backgroundColor: warning.category.color }}
+              />
+              <h2 className="font-semibold text-[#fff8e7]">{warning.category.name}</h2>
+            </div>
+            <p className="mt-2 max-w-4xl text-sm leading-6 text-[#e7d8df]">
+              {warning.message}
+            </p>
+            <p className="mt-2 text-xs text-[#a996a3]">
+              {warning.dates[0]} and {warning.dates[1]}
+            </p>
+          </article>
+        ))}
+      </div>
+    </section>
   );
 }
 

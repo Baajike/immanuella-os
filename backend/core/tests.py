@@ -836,6 +836,126 @@ class StreakAndDisciplineScoreTests(APITestCase):
         return DailyTask.objects.create(daily_plan=plan, task=self.task)
 
 
+class NeverMissTwiceWarningTests(APITestCase):
+    def setUp(self):
+        self.today = date(2026, 6, 20)
+        self.yesterday = self.today - timedelta(days=1)
+        self.user = User.objects.create_user(
+            username="immanuella@example.com",
+            email="immanuella@example.com",
+            password="StrongPassword123",
+        )
+        self.other_user = User.objects.create_user(
+            username="other@example.com",
+            email="other@example.com",
+            password="StrongPassword123",
+        )
+        self.backend_category = Category.objects.create(
+            user=self.user,
+            name="Backend",
+            color="#3B82F6",
+            icon="code",
+        )
+        self.spanish_category = Category.objects.create(
+            user=self.user,
+            name="Spanish",
+            color="#10B981",
+            icon="language",
+        )
+
+    def test_unauthenticated_users_cannot_access_warnings(self):
+        response = self.get_warnings()
+
+        self.assertEqual(response.status_code, status.HTTP_401_UNAUTHORIZED)
+
+    def test_no_warning_when_there_are_no_missed_tasks(self):
+        self.client.force_authenticate(user=self.user)
+
+        response = self.get_warnings()
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertFalse(response.data["has_warning"])
+        self.assertEqual(response.data["warnings"], [])
+
+    def test_no_warning_when_only_one_day_is_missed(self):
+        self.create_missed_task(self.user, self.backend_category, self.today)
+        self.client.force_authenticate(user=self.user)
+
+        response = self.get_warnings()
+
+        self.assertFalse(response.data["has_warning"])
+        self.assertEqual(response.data["warnings"], [])
+
+    def test_warning_for_same_category_missed_on_consecutive_days(self):
+        self.create_missed_task(self.user, self.backend_category, self.yesterday)
+        self.create_missed_task(self.user, self.backend_category, self.today)
+        self.client.force_authenticate(user=self.user)
+
+        response = self.get_warnings()
+
+        self.assertTrue(response.data["has_warning"])
+        self.assertEqual(len(response.data["warnings"]), 1)
+        warning = response.data["warnings"][0]
+        self.assertEqual(warning["category"]["id"], self.backend_category.id)
+        self.assertEqual(warning["category"]["name"], "Backend")
+        self.assertEqual(warning["dates"], ["2026-06-19", "2026-06-20"])
+        self.assertIn("2 days in a row", warning["message"])
+
+    def test_no_warning_for_different_categories(self):
+        self.create_missed_task(self.user, self.backend_category, self.yesterday)
+        self.create_missed_task(self.user, self.spanish_category, self.today)
+        self.client.force_authenticate(user=self.user)
+
+        response = self.get_warnings()
+
+        self.assertFalse(response.data["has_warning"])
+        self.assertEqual(response.data["warnings"], [])
+
+    def test_no_warning_for_another_users_data(self):
+        other_category = Category.objects.create(
+            user=self.other_user,
+            name="Other Backend",
+            color="#EF4444",
+            icon="code",
+        )
+        self.create_missed_task(self.other_user, other_category, self.yesterday)
+        self.create_missed_task(self.other_user, other_category, self.today)
+        self.client.force_authenticate(user=self.user)
+
+        response = self.get_warnings()
+
+        self.assertFalse(response.data["has_warning"])
+        self.assertEqual(response.data["warnings"], [])
+
+    def test_uncategorized_tasks_are_ignored(self):
+        self.create_missed_task(self.user, None, self.yesterday)
+        self.create_missed_task(self.user, None, self.today)
+        self.client.force_authenticate(user=self.user)
+
+        response = self.get_warnings()
+
+        self.assertFalse(response.data["has_warning"])
+        self.assertEqual(response.data["warnings"], [])
+
+    def get_warnings(self):
+        with patch("core.warning_services.timezone.localdate", return_value=self.today):
+            return self.client.get(reverse("never-miss-twice-warning"))
+
+    def create_missed_task(self, user, category, plan_date):
+        plan, _ = DailyPlan.objects.get_or_create(user=user, date=plan_date)
+        task = Task.objects.create(
+            user=user,
+            category=category,
+            title=f"Missed task {plan_date}",
+            priority=Task.Priority.NORMAL,
+        )
+        return DailyTask.objects.create(
+            daily_plan=plan,
+            task=task,
+            status=DailyTask.Status.MISSED,
+        )
+
+
 class RecommendationEndpointTests(APITestCase):
     def setUp(self):
         self.user = User.objects.create_user(

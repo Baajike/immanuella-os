@@ -83,6 +83,17 @@ export interface CreateTaskPayload {
   repeat_days?: number[] | null;
 }
 
+export interface UpdateTaskPayload {
+  title?: string;
+  description?: string;
+  category?: ApiId | null;
+  priority?: TaskPriority;
+  estimated_duration_minutes?: number;
+  due_date?: ISODate | null;
+  repeat_type?: RepeatType;
+  is_active?: boolean;
+}
+
 export interface AddDailyTaskPayload {
   task_id: ApiId;
   scheduled_start_time?: ISOTime | null;
@@ -140,6 +151,17 @@ export interface Streak {
   current_streak: number;
   longest_streak: number;
   last_completed_date: ISODate | null;
+}
+
+export interface NeverMissTwiceWarning {
+  category: CategorySummary;
+  message: string;
+  dates: [ISODate, ISODate];
+}
+
+export interface NeverMissTwiceWarningResponse {
+  has_warning: boolean;
+  warnings: NeverMissTwiceWarning[];
 }
 
 export interface DisciplineScore {

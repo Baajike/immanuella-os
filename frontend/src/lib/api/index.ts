@@ -5,9 +5,11 @@ export {
   buildApiUrl,
   completeDailyTask,
   createTask,
+  deleteTask,
   generateWeeklyReview,
   generateWeeklyReviewForWeek,
   getCurrentUser,
+  getNeverMissTwiceWarnings,
   getNextRecommendation,
   getStreaks,
   getTodaysDailyPlan,
@@ -20,4 +22,5 @@ export {
   register,
   rescheduleDailyTask,
   skipDailyTask,
+  updateTask,
 } from "./client";

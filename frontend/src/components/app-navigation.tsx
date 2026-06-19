@@ -1,11 +1,12 @@
 import Link from "next/link";
 
-type AppRoute = "dashboard" | "today" | "tasks" | "weekly-reviews";
+type AppRoute = "dashboard" | "today" | "tasks" | "streaks" | "weekly-reviews";
 
 const navigationItems: Array<{ label: string; route: AppRoute; href: string }> = [
   { label: "Dashboard", route: "dashboard", href: "/dashboard" },
   { label: "Today", route: "today", href: "/today" },
   { label: "Tasks", route: "tasks", href: "/tasks" },
+  { label: "Streaks", route: "streaks", href: "/streaks" },
   { label: "Reviews", route: "weekly-reviews", href: "/weekly-reviews" },
 ];
 

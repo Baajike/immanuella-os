@@ -8,6 +8,7 @@ import type {
   DisciplineScore,
   LoginPayload,
   MissDailyTaskPayload,
+  NeverMissTwiceWarningResponse,
   PaginatedResponse,
   Recommendation,
   RegisterPayload,
@@ -15,6 +16,7 @@ import type {
   RescheduledDailyTask,
   Streak,
   Task,
+  UpdateTaskPayload,
   User,
   WeeklyReview,
 } from "@/types";
@@ -214,6 +216,25 @@ export function createTask(accessToken: string, payload: CreateTaskPayload) {
   });
 }
 
+export function updateTask(
+  accessToken: string,
+  taskId: number,
+  payload: UpdateTaskPayload,
+) {
+  return apiRequest<Task>(`/tasks/${taskId}/`, {
+    accessToken,
+    method: "PATCH",
+    body: payload,
+  });
+}
+
+export function deleteTask(accessToken: string, taskId: number) {
+  return apiRequest<void>(`/tasks/${taskId}/`, {
+    accessToken,
+    method: "DELETE",
+  });
+}
+
 export function getTodaysDailyPlan(accessToken: string) {
   return apiRequest<DailyPlan>("/daily-plans/today/", { accessToken });
 }
@@ -277,6 +298,13 @@ export function getNextRecommendation(accessToken: string) {
 
 export function getStreaks(accessToken: string) {
   return apiRequest<Streak[]>("/streaks/", { accessToken });
+}
+
+export function getNeverMissTwiceWarnings(accessToken: string) {
+  return apiRequest<NeverMissTwiceWarningResponse>(
+    "/warnings/never-miss-twice/",
+    { accessToken },
+  );
 }
 
 export function getTodaysDisciplineScore(accessToken: string) {

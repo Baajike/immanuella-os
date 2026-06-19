@@ -8,9 +8,11 @@ import {
   ApiError,
   addTaskToDailyPlan,
   createTask,
+  deleteTask,
   getTodaysDailyPlan,
   listCategories,
   listTasks,
+  updateTask,
 } from "@/lib/api";
 import { getAccessToken } from "@/lib/auth";
 import type {
@@ -20,6 +22,7 @@ import type {
   RepeatType,
   Task,
   TaskPriority,
+  UpdateTaskPayload,
 } from "@/types";
 
 const priorityOptions: TaskPriority[] = ["low", "normal", "high", "critical"];
@@ -40,6 +43,8 @@ const initialScheduleFormState = {
   scheduled_start_time: "",
   scheduled_end_time: "",
 };
+
+type EditTaskFormState = typeof initialFormState & { is_active: boolean };
 
 export default function TasksPage() {
   return (
@@ -62,6 +67,13 @@ function TasksContent() {
   const [formError, setFormError] = useState<string | null>(null);
   const [scheduleError, setScheduleError] = useState<string | null>(null);
   const [scheduleSuccess, setScheduleSuccess] = useState<string | null>(null);
+  const [editingTaskId, setEditingTaskId] = useState<number | null>(null);
+  const [editForm, setEditForm] = useState<EditTaskFormState | null>(null);
+  const [isUpdating, setIsUpdating] = useState(false);
+  const [deletingTaskId, setDeletingTaskId] = useState<number | null>(null);
+  const [deleteConfirmationId, setDeleteConfirmationId] = useState<number | null>(null);
+  const [taskActionError, setTaskActionError] = useState<string | null>(null);
+  const [taskActionSuccess, setTaskActionSuccess] = useState<string | null>(null);
 
   async function loadPageData() {
     const token = getAccessToken();
@@ -143,6 +155,70 @@ function TasksContent() {
     }
   }
 
+  function startEditing(task: Task) {
+    setEditingTaskId(task.id);
+    setEditForm(buildEditForm(task));
+    setDeleteConfirmationId(null);
+    setTaskActionError(null);
+    setTaskActionSuccess(null);
+  }
+
+  function cancelEditing() {
+    setEditingTaskId(null);
+    setEditForm(null);
+    setTaskActionError(null);
+  }
+
+  async function handleEditSubmit(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    const token = getAccessToken();
+    if (!token || editingTaskId === null || !editForm) {
+      setTaskActionError("Your session is missing. Log in again to update tasks.");
+      return;
+    }
+
+    try {
+      setIsUpdating(true);
+      setTaskActionError(null);
+      setTaskActionSuccess(null);
+      await updateTask(token, editingTaskId, buildUpdatePayload(editForm));
+      setEditingTaskId(null);
+      setEditForm(null);
+      setTaskActionSuccess("Task updated.");
+      await loadPageData();
+    } catch (caught) {
+      setTaskActionError(getErrorMessage(caught));
+    } finally {
+      setIsUpdating(false);
+    }
+  }
+
+  async function handleDelete(taskId: number) {
+    const token = getAccessToken();
+    if (!token) {
+      setTaskActionError("Your session is missing. Log in again to delete tasks.");
+      return;
+    }
+
+    try {
+      setDeletingTaskId(taskId);
+      setTaskActionError(null);
+      setTaskActionSuccess(null);
+      await deleteTask(token, taskId);
+      setDeleteConfirmationId(null);
+      if (editingTaskId === taskId) {
+        setEditingTaskId(null);
+        setEditForm(null);
+      }
+      setTaskActionSuccess("Task deleted.");
+      await loadPageData();
+    } catch (caught) {
+      setTaskActionError(getErrorMessage(caught));
+    } finally {
+      setDeletingTaskId(null);
+    }
+  }
+
   const activeTaskCount = useMemo(
     () => tasks.filter((task) => task.is_active).length,
     [tasks],
@@ -191,8 +267,29 @@ function TasksContent() {
 
           <TaskList
             activeTaskCount={activeTaskCount}
+            categories={categories}
+            deleteConfirmationId={deleteConfirmationId}
+            deletingTaskId={deletingTaskId}
+            editForm={editForm}
+            editingTaskId={editingTaskId}
             error={loadError}
             isLoading={isLoading}
+            isUpdating={isUpdating}
+            onCancelEdit={cancelEditing}
+            onChangeEditForm={setEditForm}
+            onConfirmDelete={(taskId) => {
+              setDeleteConfirmationId(taskId);
+              setEditingTaskId(null);
+              setEditForm(null);
+              setTaskActionError(null);
+              setTaskActionSuccess(null);
+            }}
+            onDelete={handleDelete}
+            onDismissDelete={() => setDeleteConfirmationId(null)}
+            onEdit={startEditing}
+            onEditSubmit={handleEditSubmit}
+            taskActionError={taskActionError}
+            taskActionSuccess={taskActionSuccess}
             tasks={tasks}
           />
         </section>
@@ -448,14 +545,44 @@ function TaskForm({
 
 function TaskList({
   tasks,
+  categories,
   isLoading,
   error,
   activeTaskCount,
+  editingTaskId,
+  editForm,
+  isUpdating,
+  deletingTaskId,
+  deleteConfirmationId,
+  taskActionError,
+  taskActionSuccess,
+  onEdit,
+  onCancelEdit,
+  onChangeEditForm,
+  onEditSubmit,
+  onConfirmDelete,
+  onDismissDelete,
+  onDelete,
 }: {
   tasks: Task[];
+  categories: Category[];
   isLoading: boolean;
   error: string | null;
   activeTaskCount: number;
+  editingTaskId: number | null;
+  editForm: EditTaskFormState | null;
+  isUpdating: boolean;
+  deletingTaskId: number | null;
+  deleteConfirmationId: number | null;
+  taskActionError: string | null;
+  taskActionSuccess: string | null;
+  onEdit: (task: Task) => void;
+  onCancelEdit: () => void;
+  onChangeEditForm: (value: EditTaskFormState) => void;
+  onEditSubmit: (event: FormEvent<HTMLFormElement>) => void;
+  onConfirmDelete: (taskId: number) => void;
+  onDismissDelete: () => void;
+  onDelete: (taskId: number) => void;
 }) {
   return (
     <section className="rounded-lg border border-white/10 bg-white/[0.045] p-5 shadow-xl shadow-black/15">
@@ -470,6 +597,16 @@ function TaskList({
       </div>
 
       <div className="mt-5">
+        {taskActionError ? (
+          <p className="mb-3 rounded-md border border-red-300/20 bg-red-500/10 px-3 py-2 text-sm text-red-100">
+            {taskActionError}
+          </p>
+        ) : null}
+        {taskActionSuccess ? (
+          <p className="mb-3 rounded-md border border-emerald-300/20 bg-emerald-500/10 px-3 py-2 text-sm text-emerald-100">
+            {taskActionSuccess}
+          </p>
+        ) : null}
         {isLoading ? (
           <p className="text-sm text-[#c7b8c3]">Loading tasks...</p>
         ) : error ? (
@@ -483,33 +620,90 @@ function TaskList({
                 className="rounded-lg border border-white/10 bg-plum-950/50 p-4"
                 key={task.id}
               >
-                <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
-                  <div>
-                    <h3 className="font-semibold text-[#fff8e7]">{task.title}</h3>
-                    <p className="mt-1 text-sm leading-6 text-[#c7b8c3]">
-                      {task.description || "No description yet."}
-                    </p>
-                  </div>
-                  <span className="w-fit rounded-full bg-parchment-100 px-3 py-1 text-xs font-semibold uppercase tracking-[0.1em] text-plum-950">
-                    {task.priority}
-                  </span>
-                </div>
-                <div className="mt-4 flex flex-wrap gap-2 text-xs text-[#d8cbd4]">
-                  <span className="rounded-full border border-white/10 px-3 py-1">
-                    {task.category?.name ?? "No category"}
-                  </span>
-                  <span className="rounded-full border border-white/10 px-3 py-1">
-                    {task.estimated_duration_minutes} min
-                  </span>
-                  <span className="rounded-full border border-white/10 px-3 py-1">
-                    {task.repeat_type}
-                  </span>
-                  {task.due_date ? (
-                    <span className="rounded-full border border-white/10 px-3 py-1">
-                      due {task.due_date}
-                    </span>
-                  ) : null}
-                </div>
+                {editingTaskId === task.id && editForm ? (
+                  <EditTaskForm
+                    categories={categories}
+                    form={editForm}
+                    isUpdating={isUpdating}
+                    onCancel={onCancelEdit}
+                    onChange={onChangeEditForm}
+                    onSubmit={onEditSubmit}
+                  />
+                ) : (
+                  <>
+                    <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+                      <div>
+                        <h3 className="font-semibold text-[#fff8e7]">{task.title}</h3>
+                        <p className="mt-1 text-sm leading-6 text-[#c7b8c3]">
+                          {task.description || "No description yet."}
+                        </p>
+                      </div>
+                      <span className="w-fit rounded-full bg-parchment-100 px-3 py-1 text-xs font-semibold uppercase tracking-[0.1em] text-plum-950">
+                        {task.priority}
+                      </span>
+                    </div>
+                    <div className="mt-4 flex flex-wrap gap-2 text-xs text-[#d8cbd4]">
+                      <span className="rounded-full border border-white/10 px-3 py-1">
+                        {task.category?.name ?? "No category"}
+                      </span>
+                      <span className="rounded-full border border-white/10 px-3 py-1">
+                        {task.estimated_duration_minutes} min
+                      </span>
+                      <span className="rounded-full border border-white/10 px-3 py-1">
+                        {task.repeat_type}
+                      </span>
+                      <span className="rounded-full border border-white/10 px-3 py-1">
+                        {task.is_active ? "active" : "inactive"}
+                      </span>
+                      {task.due_date ? (
+                        <span className="rounded-full border border-white/10 px-3 py-1">
+                          due {task.due_date}
+                        </span>
+                      ) : null}
+                    </div>
+
+                    {deleteConfirmationId === task.id ? (
+                      <div className="mt-4 rounded-md border border-red-300/20 bg-red-500/10 p-3">
+                        <p className="text-sm text-red-100">Delete this task permanently?</p>
+                        <div className="mt-3 flex flex-wrap gap-2">
+                          <button
+                            className="rounded-md bg-red-200 px-3 py-2 text-sm font-semibold text-red-950 transition hover:bg-red-100 disabled:cursor-not-allowed disabled:opacity-70"
+                            disabled={deletingTaskId === task.id}
+                            onClick={() => onDelete(task.id)}
+                            type="button"
+                          >
+                            {deletingTaskId === task.id ? "Deleting..." : "Yes, delete"}
+                          </button>
+                          <button
+                            className="rounded-md border border-white/15 px-3 py-2 text-sm font-semibold text-[#fff8e7] transition hover:bg-white/10 disabled:opacity-70"
+                            disabled={deletingTaskId === task.id}
+                            onClick={onDismissDelete}
+                            type="button"
+                          >
+                            Cancel
+                          </button>
+                        </div>
+                      </div>
+                    ) : (
+                      <div className="mt-4 flex flex-wrap gap-2 border-t border-white/10 pt-4">
+                        <button
+                          className="rounded-md bg-parchment-100 px-3 py-2 text-sm font-semibold text-plum-950 transition hover:bg-parchment-200"
+                          onClick={() => onEdit(task)}
+                          type="button"
+                        >
+                          Edit
+                        </button>
+                        <button
+                          className="rounded-md border border-red-300/30 px-3 py-2 text-sm font-semibold text-red-100 transition hover:bg-red-500/10"
+                          onClick={() => onConfirmDelete(task.id)}
+                          type="button"
+                        >
+                          Delete
+                        </button>
+                      </div>
+                    )}
+                  </>
+                )}
               </article>
             ))}
           </div>
@@ -520,6 +714,144 @@ function TaskList({
         )}
       </div>
     </section>
+  );
+}
+
+function EditTaskForm({
+  categories,
+  form,
+  isUpdating,
+  onCancel,
+  onChange,
+  onSubmit,
+}: {
+  categories: Category[];
+  form: EditTaskFormState;
+  isUpdating: boolean;
+  onCancel: () => void;
+  onChange: (value: EditTaskFormState) => void;
+  onSubmit: (event: FormEvent<HTMLFormElement>) => void;
+}) {
+  return (
+    <form className="space-y-4" onSubmit={onSubmit}>
+      <div className="flex items-center justify-between gap-3">
+        <h3 className="font-semibold text-[#fff8e7]">Edit task</h3>
+        <label className="flex items-center gap-2 text-sm text-[#d8cbd4]">
+          <input
+            checked={form.is_active}
+            className="h-4 w-4 accent-[#f0c36a]"
+            onChange={(event) => onChange({ ...form, is_active: event.target.checked })}
+            type="checkbox"
+          />
+          Active
+        </label>
+      </div>
+
+      <TextInput
+        label="Title"
+        onChange={(title) => onChange({ ...form, title })}
+        required
+        value={form.title}
+      />
+
+      <label className="block text-sm font-medium text-[#fff8e7]">
+        Description
+        <textarea
+          className="mt-2 min-h-24 w-full rounded-md border border-white/10 bg-plum-950/80 px-3 py-3 text-sm text-[#fff8e7] outline-none ring-parchment-200/40 transition focus:border-parchment-200 focus:ring-2"
+          onChange={(event) => onChange({ ...form, description: event.target.value })}
+          value={form.description}
+        />
+      </label>
+
+      <div className="grid gap-4 sm:grid-cols-2">
+        <label className="block text-sm font-medium text-[#fff8e7]">
+          Category
+          <select
+            className="mt-2 w-full rounded-md border border-white/10 bg-plum-950/80 px-3 py-3 text-sm text-[#fff8e7] outline-none ring-parchment-200/40 transition focus:border-parchment-200 focus:ring-2"
+            onChange={(event) => onChange({ ...form, category: event.target.value })}
+            value={form.category}
+          >
+            <option value="">No category</option>
+            {categories.map((category) => (
+              <option key={category.id} value={category.id}>
+                {category.name}
+              </option>
+            ))}
+          </select>
+        </label>
+
+        <label className="block text-sm font-medium text-[#fff8e7]">
+          Priority
+          <select
+            className="mt-2 w-full rounded-md border border-white/10 bg-plum-950/80 px-3 py-3 text-sm text-[#fff8e7] outline-none ring-parchment-200/40 transition focus:border-parchment-200 focus:ring-2"
+            onChange={(event) =>
+              onChange({ ...form, priority: event.target.value as TaskPriority })
+            }
+            value={form.priority}
+          >
+            {priorityOptions.map((priority) => (
+              <option key={priority} value={priority}>
+                {priority}
+              </option>
+            ))}
+          </select>
+        </label>
+      </div>
+
+      <div className="grid gap-4 sm:grid-cols-2">
+        <TextInput
+          label="Minutes"
+          min="1"
+          onChange={(estimated_duration_minutes) =>
+            onChange({ ...form, estimated_duration_minutes })
+          }
+          required
+          type="number"
+          value={form.estimated_duration_minutes}
+        />
+        <TextInput
+          label="Due date"
+          onChange={(due_date) => onChange({ ...form, due_date })}
+          type="date"
+          value={form.due_date}
+        />
+      </div>
+
+      <label className="block text-sm font-medium text-[#fff8e7]">
+        Repeat
+        <select
+          className="mt-2 w-full rounded-md border border-white/10 bg-plum-950/80 px-3 py-3 text-sm text-[#fff8e7] outline-none ring-parchment-200/40 transition focus:border-parchment-200 focus:ring-2"
+          onChange={(event) =>
+            onChange({ ...form, repeat_type: event.target.value as RepeatType })
+          }
+          value={form.repeat_type}
+        >
+          {repeatTypeOptions.map((repeatType) => (
+            <option key={repeatType} value={repeatType}>
+              {repeatType}
+            </option>
+          ))}
+        </select>
+      </label>
+
+      <div className="flex flex-wrap gap-2 border-t border-white/10 pt-4">
+        <button
+          className="rounded-md bg-parchment-100 px-4 py-2 text-sm font-semibold text-plum-950 transition hover:bg-parchment-200 disabled:cursor-not-allowed disabled:opacity-70"
+          disabled={isUpdating}
+          type="submit"
+        >
+          {isUpdating ? "Saving..." : "Save changes"}
+        </button>
+        <button
+          className="rounded-md border border-white/15 px-4 py-2 text-sm font-semibold text-[#fff8e7] transition hover:bg-white/10 disabled:opacity-70"
+          disabled={isUpdating}
+          onClick={onCancel}
+          type="button"
+        >
+          Cancel
+        </button>
+      </div>
+    </form>
   );
 }
 
@@ -563,6 +895,32 @@ function buildCreatePayload(form: typeof initialFormState): CreateTaskPayload {
     due_date: form.due_date || null,
     repeat_type: form.repeat_type,
     repeat_days: null,
+  };
+}
+
+function buildEditForm(task: Task): EditTaskFormState {
+  return {
+    title: task.title,
+    description: task.description,
+    category: task.category ? String(task.category.id) : "",
+    priority: task.priority,
+    estimated_duration_minutes: String(task.estimated_duration_minutes),
+    due_date: task.due_date ?? "",
+    repeat_type: task.repeat_type,
+    is_active: task.is_active,
+  };
+}
+
+function buildUpdatePayload(form: EditTaskFormState): UpdateTaskPayload {
+  return {
+    title: form.title.trim(),
+    description: form.description.trim(),
+    category: form.category ? Number(form.category) : null,
+    priority: form.priority,
+    estimated_duration_minutes: Number(form.estimated_duration_minutes),
+    due_date: form.due_date || null,
+    repeat_type: form.repeat_type,
+    is_active: form.is_active,
   };
 }
 

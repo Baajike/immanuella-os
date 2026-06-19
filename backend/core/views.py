@@ -24,6 +24,7 @@ from .serializers import (
 from .recommendations import get_next_daily_task_recommendation
 from .services import apply_daily_task_status
 from .weekly_reviews import generate_weekly_review
+from .warning_services import get_never_miss_twice_warnings
 
 
 class RegisterView(generics.CreateAPIView):
@@ -285,6 +286,19 @@ class TodayDisciplineScoreView(APIView):
             {
                 "date": plan.date,
                 "discipline_score": plan.discipline_score,
+            }
+        )
+
+
+class NeverMissTwiceWarningView(APIView):
+    permission_classes = [permissions.IsAuthenticated]
+
+    def get(self, request):
+        warnings = get_never_miss_twice_warnings(request.user)
+        return Response(
+            {
+                "has_warning": bool(warnings),
+                "warnings": warnings,
             }
         )
 

@@ -401,6 +401,27 @@ List all streaks for the current user (one per category).
 > there is no separate "update streak" endpoint for MVP. The list endpoint is
 > read-only.
 
+### `GET /api/v1/warnings/never-miss-twice/`
+Return categories with missed tasks on both today and yesterday. Uncategorized
+tasks are ignored, and each category appears at most once.
+
+**Response `200 OK`**
+```json
+{
+  "has_warning": true,
+  "warnings": [
+    {
+      "category": { "id": 1, "name": "Backend", "color": "#3B82F6" },
+      "message": "Backend has been missed 2 days in a row. One miss is life. Two is a pattern. Do one small session today.",
+      "dates": ["2026-06-14", "2026-06-15"]
+    }
+  ]
+}
+```
+
+When no category matches, `has_warning` is `false` and `warnings` is an empty
+list.
+
 ---
 
 ## 8. Discipline Score
