@@ -5,8 +5,8 @@ between Codex (execution) and Claude (architecture/review). Update it after
 each Codex prompt completes and review is done.
 
 **Last updated**: 2026-06-19
-**Current phase**: Phase 4 - Streaks and Discipline Score
-**Current prompt**: Never Miss Twice warning complete
+**Current phase**: Post-MVP QA
+**Current prompt**: Final QA complete
 
 ---
 
@@ -25,7 +25,7 @@ each Codex prompt completes and review is done.
 ## Phase 1 - Backend Setup
 
 - [x] 1.1 - Project scaffold (Django + DRF + Postgres + CORS)
-- [x] 1.2 - JWT auth (register/login/refresh/logout/me)
+- [x] 1.2 - JWT auth (register/login/refresh/me)
 
 **Notes**:
 - 2026-06-16: Created Django project in `backend/`, configured DRF, CORS, django-environ, and PostgreSQL env vars. Added `core` app with domain placeholder packages for users/tasks/planning/reviews; no models or business features yet.
@@ -68,6 +68,7 @@ each Codex prompt completes and review is done.
 **Notes**:
 - 2026-06-17: Added idempotent discipline score updates for complete/miss/skip, streak updates on completion, `/api/v1/streaks/`, and `/api/v1/discipline-score/today/`. Added `DailyTask.score_applied_status` migration for deterministic score application. Weekly review, frontend, AI, and Never Miss Twice warning were not added. Next recommended prompt: implement Never Miss Twice warning.
 - 2026-06-19: Added deterministic Never Miss Twice detection for categorized tasks missed on both today and yesterday, exposed through authenticated `GET /api/v1/warnings/never-miss-twice/`. Added seven isolation/rule tests, typed frontend API support, and a restrained dashboard warning banner that refreshes with dashboard task actions. Phase 4 is complete. Next recommended prompt: run a final MVP QA and demo-readiness pass.
+- 2026-06-19: Final post-MVP QA reviewed task CRUD and scheduling, Today actions, dashboard data and warnings, Streaks, Weekly Reviews, authentication refresh, protected routes, navigation, permissions, documentation, and frontend/API types. Fixed an invalid-refresh redirect loop, replaced stale Phase 1 root-page copy, and corrected the auth status label. Next recommended prompt: configure production environment values and deploy the MVP.
 
 ---
 
@@ -131,3 +132,4 @@ If Codex implemented something differently than `database-design.md`,
 (or flagged as something to fix).
 
 - 2026-06-17: User explicitly requested all MVP database models during Phase 2. This creates model scaffolding for later roadmap phases earlier than `docs/codex-prompts.md`, but does not add later-phase business logic or endpoints.
+- 2026-06-19: `README.md` documents the implemented MVP routes. Some older sections of `docs/api-spec.md` still describe superseded draft contracts such as singular `daily-plan`, `weekly-review`, and `recommendation` paths; reconcile that specification before treating it as an external API contract.

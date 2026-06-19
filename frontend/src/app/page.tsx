@@ -6,14 +6,14 @@ export default function Home() {
       <section className="mx-auto flex min-h-[calc(100vh-5rem)] max-w-5xl flex-col justify-between">
         <div className="max-w-3xl pt-16">
           <p className="text-sm font-semibold uppercase tracking-[0.18em] text-parchment-200">
-            Frontend foundation
+            Personal life operating system
           </p>
           <h1 className="mt-5 text-4xl font-semibold leading-tight text-[#fff8e7] sm:text-6xl">
-            ImmanuellaOS is ready for the interface layer.
+            Plan clearly. Follow through. Review honestly.
           </h1>
           <p className="mt-6 max-w-2xl text-lg leading-8 text-[#d8cbd4]">
-            Next.js, TypeScript, Tailwind CSS, and the app router are in place.
-            The real dashboard, auth screens, and API wiring come next.
+            ImmanuellaOS brings today&apos;s plan, task priorities, discipline score,
+            category streaks, recommendations, and weekly reviews into one focused place.
           </p>
           <div className="mt-8 flex flex-wrap gap-3">
             <Link
@@ -32,13 +32,13 @@ export default function Home() {
         </div>
 
         <div className="grid gap-4 pb-10 sm:grid-cols-3">
-          {["App routes", "Components", "API client"].map((item) => (
+          {["Plan today", "Protect streaks", "Review the week"].map((item) => (
             <div
               className="rounded-lg border border-white/10 bg-white/[0.04] p-5"
               key={item}
             >
               <p className="text-sm font-medium text-parchment-100">{item}</p>
-              <p className="mt-2 text-sm text-[#c7b8c3]">Prepared for Phase 5.</p>
+              <p className="mt-2 text-sm text-[#c7b8c3]">Ready in the MVP.</p>
             </div>
           ))}
         </div>

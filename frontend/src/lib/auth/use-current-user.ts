@@ -15,6 +15,7 @@ export function useCurrentUser() {
     const accessToken = getAccessToken();
     if (!accessToken) {
       setUser(null);
+      setError(null);
       setIsLoading(false);
       return;
     }
@@ -27,6 +28,9 @@ export function useCurrentUser() {
     } catch (caught) {
       if (caught instanceof ApiError && caught.status === 401) {
         clearTokens();
+        setUser(null);
+        setError(null);
+        return;
       }
       setUser(null);
       setError(caught instanceof Error ? caught.message : "Could not load user.");
