@@ -927,18 +927,20 @@ class RecommendationEndpointTests(APITestCase):
     def test_due_scheduled_task_is_recommended_before_later_scheduled_task(self):
         self.client.force_authenticate(user=self.user)
         current_datetime = datetime(2026, 6, 17, 12, 0, tzinfo=timezone.get_current_timezone())
-        due_task = self.create_daily_task(
-            title="Due scheduled task",
-            priority=Task.Priority.NORMAL,
-            scheduled_start_time=time(11, 0),
-        )
-        later_task = self.create_daily_task(
-            title="Later scheduled task",
-            priority=Task.Priority.NORMAL,
-            scheduled_start_time=time(15, 0),
-        )
-
-        with patch("core.recommendations.timezone.localtime", return_value=current_datetime):
+        with (
+            patch("core.recommendations.timezone.localdate", return_value=current_datetime.date()),
+            patch("core.recommendations.timezone.localtime", return_value=current_datetime),
+        ):
+            due_task = self.create_daily_task(
+                title="Due scheduled task",
+                priority=Task.Priority.NORMAL,
+                scheduled_start_time=time(11, 0),
+            )
+            later_task = self.create_daily_task(
+                title="Later scheduled task",
+                priority=Task.Priority.NORMAL,
+                scheduled_start_time=time(15, 0),
+            )
             response = self.client.get(reverse("recommendation-next"))
 
         self.assertEqual(response.status_code, status.HTTP_200_OK)
