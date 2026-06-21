@@ -1,52 +1,38 @@
-# ImmanuellaOS — API Specification
+# ImmanuellaOS MVP API Specification
 
-## 1. General Conventions
+This document describes the API currently implemented by the Django backend.
+The base path is `/api/v1`.
 
-- **Base URL**: `/api/v1/`
-- **Format**: JSON request/response bodies.
-- **Auth**: JWT (access + refresh tokens) via `djangorestframework-simplejwt`
-  or similar.
-  - Send access token as `Authorization: Bearer <access_token>` header.
-  - All endpoints except `register`, `login`, and `token/refresh` require
-    authentication.
-- **Pagination**: List endpoints use simple page-number pagination:
-  `?page=1&page_size=20` (defaults: page=1, page_size=20).
-- **Filtering**: Where noted, list endpoints support query params for
-  filtering (e.g. `?category=2&status=pending`).
-- **Dates/times**: ISO 8601 (`YYYY-MM-DD` for dates, `HH:MM:SS` for times,
-  full ISO datetime for timestamps).
+## 1. Conventions
 
-### Standard Error Response Format
-
-All error responses follow this shape:
+- Send JSON request bodies with `Content-Type: application/json`.
+- Send authenticated requests with `Authorization: Bearer <access_token>`.
+- All endpoints require authentication except registration, login, and token
+  refresh.
+- User-owned querysets are scoped to the authenticated user. Requests for
+  another user's object return `404 Not Found` where an object ID is used.
+- Category, task, and weekly-review lists are paginated:
 
 ```json
 {
-  "error": {
-    "code": "validation_error",
-    "message": "A human-readable summary of what went wrong.",
-    "details": {
-      "field_name": ["Specific issue with this field."]
-    }
-  }
+  "count": 1,
+  "next": null,
+  "previous": null,
+  "results": []
 }
 ```
 
-Common `code` values: `validation_error`, `not_found`, `permission_denied`,
-`authentication_failed`, `not_authenticated`, `server_error`.
-
-HTTP status codes used: `200 OK`, `201 Created`, `204 No Content`,
-`400 Bad Request`, `401 Unauthorized`, `403 Forbidden`, `404 Not Found`,
-`500 Internal Server Error`.
-
----
+- Validation errors use standard DRF field responses such as
+  `{"task_id": ["Task does not exist."]}`. General errors may use
+  `{"detail": "Not found."}`.
+- Dates use `YYYY-MM-DD`; times use `HH:MM:SS`; datetimes use ISO 8601.
 
 ## 2. Authentication
 
 ### `POST /api/v1/auth/register/`
-Create a new user account. Public.
 
-**Request body**
+Create a user and that user's default categories.
+
 ```json
 {
   "email": "immanuella@example.com",
@@ -55,22 +41,10 @@ Create a new user account. Public.
 }
 ```
 
-**Response `201 Created`**
-```json
-{
-  "id": 1,
-  "email": "immanuella@example.com",
-  "name": "Immanuella",
-  "created_at": "2026-06-15T10:00:00Z"
-}
-```
-
----
+Returns `201 Created` with `id`, `email`, `name`, and `created_at`.
 
 ### `POST /api/v1/auth/login/`
-Obtain JWT access + refresh tokens. Public.
 
-**Request body**
 ```json
 {
   "email": "immanuella@example.com",
@@ -78,488 +52,278 @@ Obtain JWT access + refresh tokens. Public.
 }
 ```
 
-**Response `200 OK`**
+Returns `200 OK`:
+
 ```json
 {
-  "access": "eyJ...",
-  "refresh": "eyJ..."
+  "access": "<jwt>",
+  "refresh": "<jwt>"
 }
 ```
-
----
 
 ### `POST /api/v1/auth/token/refresh/`
-Exchange a refresh token for a new access token. Public.
 
-**Request body**
-```json
-{ "refresh": "eyJ..." }
-```
-
-**Response `200 OK`**
-```json
-{ "access": "eyJ..." }
-```
-
----
-
-### `POST /api/v1/auth/logout/`
-Blacklist the provided refresh token (if using token blacklist). Auth required.
-
-**Request body**
-```json
-{ "refresh": "eyJ..." }
-```
-
-**Response `204 No Content`**
-
----
-
-### `GET /api/v1/auth/me/`
-Get the current authenticated user. Auth required.
-
-**Response `200 OK`**
 ```json
 {
-  "id": 1,
-  "email": "immanuella@example.com",
-  "name": "Immanuella",
-  "created_at": "2026-06-15T10:00:00Z"
+  "refresh": "<refresh_token>"
 }
 ```
 
----
+Returns `200 OK` with a new `access` token.
+
+### `GET /api/v1/auth/me/`
+
+Returns the authenticated user's `id`, `email`, `name`, and `created_at`.
+
+There is no backend logout or token-blacklist endpoint in the MVP. Frontend
+logout clears locally stored tokens.
 
 ## 3. Categories
 
-### `GET /api/v1/categories/`
-List all categories for the current user.
+All routes are authenticated and user-scoped.
 
-**Response `200 OK`**
+- `GET /api/v1/categories/` - paginated list
+- `POST /api/v1/categories/` - create
+- `GET /api/v1/categories/{id}/` - retrieve
+- `PUT /api/v1/categories/{id}/` - replace
+- `PATCH /api/v1/categories/{id}/` - partially update
+- `DELETE /api/v1/categories/{id}/` - delete (`204 No Content`)
+
+Writable fields are `name`, `color`, and `icon`. Responses also include `id`,
+`created_at`, and `updated_at`. The authenticated user is attached server-side.
+
 ```json
 {
-  "count": 9,
-  "results": [
-    { "id": 1, "name": "Backend", "color": "#3B82F6", "icon": "code", "created_at": "...", "updated_at": "..." },
-    { "id": 2, "name": "Cybersecurity", "color": "#EF4444", "icon": "shield", "created_at": "...", "updated_at": "..." }
-  ]
+  "name": "Spanish",
+  "color": "#10B981",
+  "icon": "language"
 }
 ```
-
-### `POST /api/v1/categories/`
-Create a category.
-
-**Request body**
-```json
-{ "name": "Spanish", "color": "#10B981", "icon": "language" }
-```
-
-**Response `201 Created`** — returns the created category object.
-
-### `PATCH /api/v1/categories/{id}/`
-Update a category (partial update).
-
-**Request body**
-```json
-{ "color": "#22C55E" }
-```
-
-**Response `200 OK`** — returns the updated category object.
-
-### `DELETE /api/v1/categories/{id}/`
-Delete a category. Tasks referencing it have `category` set to `null`
-(see DB design `on_delete=SET_NULL`).
-
-**Response `204 No Content`**
-
----
 
 ## 4. Tasks
 
-### `GET /api/v1/tasks/`
-List tasks for the current user.
+All routes are authenticated and user-scoped.
 
-**Query params**: `?category=<id>`, `?priority=<low|normal|high|critical>`,
-`?is_active=true|false`, `?repeat_type=<...>`
+- `GET /api/v1/tasks/` - paginated list
+- `POST /api/v1/tasks/` - create
+- `GET /api/v1/tasks/{id}/` - retrieve
+- `PUT /api/v1/tasks/{id}/` - replace
+- `PATCH /api/v1/tasks/{id}/` - partially update
+- `DELETE /api/v1/tasks/{id}/` - delete (`204 No Content`)
 
-**Response `200 OK`**
-```json
-{
-  "count": 12,
-  "results": [
-    {
-      "id": 5,
-      "title": "Backend study session",
-      "description": "Work through Django REST Framework tutorial, ch. 4",
-      "category": { "id": 1, "name": "Backend", "color": "#3B82F6" },
-      "priority": "high",
-      "estimated_duration_minutes": 60,
-      "due_date": null,
-      "repeat_type": "weekdays",
-      "repeat_days": null,
-      "is_active": true,
-      "created_at": "...",
-      "updated_at": "..."
-    }
-  ]
-}
-```
+List filters: `category`, `priority`, `repeat_type`, `is_active`, and
+`due_date`.
 
-### `POST /api/v1/tasks/`
-Create a task.
-
-**Request body**
 ```json
 {
   "title": "Backend study session",
-  "description": "Work through DRF tutorial, ch. 4",
+  "description": "Work through the DRF tutorial",
   "category": 1,
   "priority": "high",
   "estimated_duration_minutes": 60,
-  "due_date": null,
+  "due_date": "2026-06-20",
   "repeat_type": "weekdays",
-  "repeat_days": null
+  "repeat_days": null,
+  "is_active": true
 }
 ```
 
-**Response `201 Created`** — returns the created task object (category
-expanded as above).
+`category` may be `null`, but a category ID must belong to the authenticated
+user. Priority values are `low`, `normal`, `high`, and `critical`. Repeat
+values are `none`, `daily`, `weekdays`, `weekly`, and `custom`.
 
-### `GET /api/v1/tasks/{id}/`
-Get a single task's details.
+Task responses expand category as `{id, name, color}` and include `id`,
+`created_at`, and `updated_at`.
 
-**Response `200 OK`** — same shape as a list item.
+## 5. Daily Plans and Daily Tasks
 
-### `PATCH /api/v1/tasks/{id}/`
-Update a task (partial update). Same body shape as create, all fields
-optional.
+All routes are authenticated and user-scoped.
 
-**Response `200 OK`** — returns the updated task.
+### `GET /api/v1/daily-plans/today/`
 
-### `DELETE /api/v1/tasks/{id}/`
-Delete a task. Prefer setting `is_active: false` via PATCH to preserve
-history; hard delete removes related `DailyTask` rows via cascade.
+Get today's plan. The endpoint creates an empty plan with a discipline score
+of 100 if one does not exist.
 
-**Response `204 No Content`**
+### `GET /api/v1/daily-plans/{date}/`
 
----
+Get an existing plan by date. Returns `404` when that date has no plan.
 
-## 5. Daily Plan
+Daily-plan responses have this shape:
 
-### `POST /api/v1/daily-plan/generate/`
-Generate (or fetch existing) plan for a given date by creating `DailyTask`
-rows from active recurring/due tasks that match the date.
-
-**Request body**
-```json
-{ "date": "2026-06-15" }
-```
-
-**Response `200 OK`** (existing plan returned) or `201 Created` (new plan
-generated)
 ```json
 {
   "id": 42,
-  "date": "2026-06-15",
+  "date": "2026-06-20",
   "discipline_score": 100,
   "notes": "",
-  "daily_tasks": [
-    {
-      "id": 101,
-      "task": { "id": 5, "title": "Backend study session", "category": { "id": 1, "name": "Backend", "color": "#3B82F6" }, "priority": "high", "estimated_duration_minutes": 60 },
-      "scheduled_start_time": "19:00:00",
-      "scheduled_end_time": "20:00:00",
-      "status": "pending",
-      "completed_at": null,
-      "missed_reason": ""
-    }
-  ]
+  "daily_tasks": [],
+  "created_at": "2026-06-20T08:00:00Z",
+  "updated_at": "2026-06-20T08:00:00Z"
 }
 ```
 
-### `GET /api/v1/daily-plan/today/`
-Get today's plan (server-side "today" based on user's date). Returns `404`
-if no plan exists yet (frontend should call `generate/` first).
+### `POST /api/v1/daily-plans/{date}/tasks/`
 
-**Response `200 OK`** — same shape as above.
+Add one of the authenticated user's existing tasks to the plan. The plan is
+created if needed.
 
-### `GET /api/v1/daily-plan/{date}/`
-Get the plan for a specific date, e.g. `/api/v1/daily-plan/2026-06-10/`.
-
-**Response `200 OK`** — same shape as above, or `404` if none exists.
-
-### `PATCH /api/v1/daily-plan/{date}/notes/`
-Update the free-text notes/reflection for a day's plan.
-
-**Request body**
-```json
-{ "notes": "Felt tired after work, still got cybersecurity done." }
-```
-
-**Response `200 OK`** — returns the updated plan (without re-listing all
-daily_tasks, just plan fields).
-
----
-
-## 6. Daily Tasks
-
-### `PATCH /api/v1/daily-tasks/{id}/complete/`
-Mark a daily task as completed. Triggers streak update and discipline score
-recalculation.
-
-**Request body**: none required (empty body or `{}`)
-
-**Response `200 OK`**
 ```json
 {
-  "id": 101,
-  "status": "completed",
-  "completed_at": "2026-06-15T19:45:00Z",
-  "daily_plan_discipline_score": 110
+  "task_id": 5,
+  "scheduled_start_time": "19:00:00",
+  "scheduled_end_time": "20:00:00"
 }
 ```
 
-### `PATCH /api/v1/daily-tasks/{id}/miss/`
-Mark a daily task as missed.
+Returns `201 Created` for a new daily task or `200 OK` when the matching task
+and start-time slot already exists.
 
-**Request body**
-```json
-{ "missed_reason": "Ran out of time after work" }
-```
+### Daily-task actions
 
-**Response `200 OK`**
+- `PATCH /api/v1/daily-plans/tasks/{daily_task_id}/complete/`
+- `PATCH /api/v1/daily-plans/tasks/{daily_task_id}/miss/`
+- `PATCH /api/v1/daily-plans/tasks/{daily_task_id}/skip/`
+- `PATCH /api/v1/daily-plans/tasks/{daily_task_id}/reschedule/`
+
+The miss action accepts an optional body:
+
 ```json
 {
-  "id": 101,
-  "status": "missed",
-  "missed_reason": "Ran out of time after work",
-  "daily_plan_discipline_score": 85,
-  "warning": "Backend has been missed 2 days in a row. Do one small session today."
+  "missed_reason": "Ran out of time"
 }
 ```
 
-> The `warning` field is present only when the "Never Miss Twice" rule is
-> triggered for the task's category.
+The reschedule action requires a start time. `target_date` is optional; when
+it differs from the original plan date, the original daily task becomes
+`rescheduled` and a daily task is created or reused on the target plan.
 
-### `PATCH /api/v1/daily-tasks/{id}/reschedule/`
-Reschedule a daily task to a new time (same day) or move it to a future date
-(creates/updates a `DailyTask` on the target date's plan).
-
-**Request body**
 ```json
 {
   "scheduled_start_time": "21:00:00",
   "scheduled_end_time": "21:30:00",
-  "target_date": "2026-06-15"
+  "target_date": "2026-06-21"
 }
 ```
 
-**Response `200 OK`** — returns the updated/new daily task object, with
-status `rescheduled` on the original if moved to a different date.
+Daily-task responses include `id`, nested task summary, scheduled times,
+`status`, `completed_at`, `missed_reason`, `created_at`, and `updated_at`.
+Statuses are `pending`, `completed`, `missed`, `skipped`, and `rescheduled`.
+A cross-date reschedule returns `{original, new}` daily-task objects.
 
-### `PATCH /api/v1/daily-tasks/{id}/skip/`
-Mark a daily task as skipped (intentional, no penalty to discipline score,
-but still recorded for weekly review).
-
-**Request body**: none required
-
-**Response `200 OK`**
-```json
-{ "id": 101, "status": "skipped" }
-```
-
----
-
-## 7. Streaks
+## 6. Streaks, Score, and Warnings
 
 ### `GET /api/v1/streaks/`
-List all streaks for the current user (one per category).
 
-**Response `200 OK`**
+Returns a plain JSON array, not a paginated response:
+
+```json
+[
+  {
+    "id": 3,
+    "category": {"id": 1, "name": "Backend", "color": "#3B82F6"},
+    "current_streak": 4,
+    "longest_streak": 9,
+    "last_completed_date": "2026-06-19"
+  }
+]
+```
+
+### `GET /api/v1/discipline-score/today/`
+
+Gets or creates today's plan and returns:
+
 ```json
 {
-  "results": [
-    {
-      "id": 3,
-      "category": { "id": 1, "name": "Backend", "color": "#3B82F6" },
-      "current_streak": 4,
-      "longest_streak": 9,
-      "last_completed_date": "2026-06-14"
-    },
-    {
-      "id": 4,
-      "category": { "id": 2, "name": "Cybersecurity", "color": "#EF4444" },
-      "current_streak": 0,
-      "longest_streak": 6,
-      "last_completed_date": "2026-06-12"
-    }
-  ]
+  "date": "2026-06-20",
+  "discipline_score": 110
 }
 ```
 
-> Streaks are updated automatically by the `complete`/`miss` endpoints above —
-> there is no separate "update streak" endpoint for MVP. The list endpoint is
-> read-only.
+There is no public score-recalculation endpoint in the MVP.
 
 ### `GET /api/v1/warnings/never-miss-twice/`
-Return categories with missed tasks on both today and yesterday. Uncategorized
-tasks are ignored, and each category appears at most once.
 
-**Response `200 OK`**
+Returns one warning per categorized area with missed daily tasks both today
+and yesterday. Uncategorized tasks and other users' data are ignored.
+
 ```json
 {
   "has_warning": true,
   "warnings": [
     {
-      "category": { "id": 1, "name": "Backend", "color": "#3B82F6" },
+      "category": {"id": 1, "name": "Backend", "color": "#3B82F6"},
       "message": "Backend has been missed 2 days in a row. One miss is life. Two is a pattern. Do one small session today.",
-      "dates": ["2026-06-14", "2026-06-15"]
+      "dates": ["2026-06-19", "2026-06-20"]
     }
   ]
 }
 ```
 
-When no category matches, `has_warning` is `false` and `warnings` is an empty
-list.
+## 7. Recommendation
 
----
+### `GET /api/v1/recommendations/next/`
 
-## 8. Discipline Score
+Uses today's plan and returns the authenticated user's next pending or missed
+daily task. Missed tasks rank first, followed by priority and scheduled time.
 
-### `GET /api/v1/discipline-score/today/`
-Get today's discipline score and a breakdown of contributing events.
-
-**Response `200 OK`**
 ```json
 {
-  "date": "2026-06-15",
-  "discipline_score": 110,
-  "breakdown": [
-    { "reason": "Completed important task: Backend study session", "delta": 10 },
-    { "reason": "Completed all daily priorities", "delta": 20 },
-    { "reason": "Missed normal task: Tidy desk", "delta": -5 }
-  ]
+  "recommended_task": null,
+  "reason": "There are no pending or missed tasks for today.",
+  "message": "All clear for now. Rest, reset, or plan the next useful thing.",
+  "current_time": "14:30:00",
+  "date": "2026-06-20"
 }
 ```
 
-### `POST /api/v1/discipline-score/recalculate/`
-Force recalculation of today's (or a given date's) discipline score from the
-current state of its `DailyTask`s. Useful after bulk status changes.
+When present, `recommended_task` contains the daily-task ID, nested task
+details, scheduled times, status, and `created_at`. The implemented endpoint
+does not accept `available_minutes` and does not return alternatives.
 
-**Request body**
-```json
-{ "date": "2026-06-15" }
-```
+## 8. Weekly Reviews
 
-**Response `200 OK`**
-```json
-{ "date": "2026-06-15", "discipline_score": 110 }
-```
+All routes are authenticated and user-scoped.
 
----
+- `GET /api/v1/weekly-reviews/` - paginated list, newest first
+- `GET /api/v1/weekly-reviews/{id}/` - retrieve one owned review
+- `POST /api/v1/weekly-reviews/generate/` - generate/update current week
+- `POST /api/v1/weekly-reviews/generate/{week_start_date}/` - generate/update
+  the Monday-to-Sunday week containing the supplied date
 
-## 9. Weekly Review
+Generating the same user/week again updates and returns the existing review
+with `200 OK`; creating it returns `201 Created`.
 
-### `POST /api/v1/weekly-review/generate/`
-Generate the weekly review for the week containing the given date (or the
-most recently completed week if no date is given).
-
-**Request body**
-```json
-{ "date": "2026-06-14" }
-```
-
-**Response `200 OK`** (existing) or `201 Created` (newly generated)
 ```json
 {
   "id": 7,
-  "week_start_date": "2026-06-08",
-  "week_end_date": "2026-06-14",
-  "total_tasks": 28,
-  "completed_tasks": 21,
-  "missed_tasks": 5,
-  "strongest_category": { "id": 2, "name": "Cybersecurity" },
-  "weakest_category": { "id": 1, "name": "Backend" },
-  "weekly_score": 75,
-  "summary": "This week you completed 21 of 28 tasks (75%). Cybersecurity was your strongest category with a 5-day streak. Backend was your weakest with 3 missed sessions. Next week, schedule backend as your first block of the day."
+  "week_start_date": "2026-06-15",
+  "week_end_date": "2026-06-21",
+  "total_tasks": 8,
+  "completed_tasks": 5,
+  "missed_tasks": 2,
+  "skipped_tasks": 1,
+  "completion_rate": 63,
+  "strongest_category": {"id": 1, "name": "Backend", "color": "#3B82F6"},
+  "weakest_category": {"id": 2, "name": "Spanish", "color": "#10B981"},
+  "weekly_score": 63,
+  "summary": "This week you completed 5 of 8 tasks (63%).",
+  "created_at": "2026-06-20T18:00:00Z",
+  "updated_at": "2026-06-20T18:00:00Z"
 }
 ```
 
-### `GET /api/v1/weekly-review/`
-List all weekly reviews, most recent first.
+## 9. Superseded Draft Routes
 
-**Response `200 OK`**
-```json
-{
-  "count": 3,
-  "results": [
-    { "id": 7, "week_start_date": "2026-06-08", "week_end_date": "2026-06-14", "weekly_score": 75 },
-    { "id": 6, "week_start_date": "2026-06-01", "week_end_date": "2026-06-07", "weekly_score": 68 }
-  ]
-}
-```
+The following routes appeared in earlier planning documents but are not part
+of the implemented MVP API:
 
-### `GET /api/v1/weekly-review/{id}/`
-Get a single weekly review in full detail.
+- `/api/v1/auth/logout/`
+- `/api/v1/daily-plan/generate/`
+- `/api/v1/daily-plan/today/`
+- `/api/v1/daily-plan/{date}/notes/`
+- `/api/v1/daily-tasks/{id}/...`
+- `/api/v1/discipline-score/recalculate/`
+- `/api/v1/recommendation/next/`
+- `/api/v1/weekly-review/...`
 
-**Response `200 OK`** — same shape as `generate` response.
-
----
-
-## 10. Recommendation
-
-### `GET /api/v1/recommendation/next/`
-Get the "What should I do next?" recommendation based on the current time,
-today's plan, pending/missed tasks, and streak status.
-
-**Query params (optional)**: `?available_minutes=20` — if provided, biases
-recommendation toward tasks that fit in the given time window.
-
-**Response `200 OK`**
-```json
-{
-  "recommended_daily_task": {
-    "id": 103,
-    "task": {
-      "id": 6,
-      "title": "Cybersecurity: TryHackMe room",
-      "category": { "id": 2, "name": "Cybersecurity", "color": "#EF4444" },
-      "priority": "high",
-      "estimated_duration_minutes": 30
-    },
-    "scheduled_start_time": "21:00:00",
-    "status": "pending"
-  },
-  "reason": "Cybersecurity has been missed 2 days in a row and fits in your available time. Do this before anything else tonight.",
-  "alternatives": [
-    {
-      "daily_task_id": 104,
-      "title": "Spanish: Duolingo + 10 min reading",
-      "reason": "Short task, good if you only have 15-20 minutes."
-    }
-  ]
-}
-```
-
-**Response `200 OK` (nothing pending)**
-```json
-{
-  "recommended_daily_task": null,
-  "reason": "All planned tasks for today are done. Consider reviewing tomorrow's plan or resting.",
-  "alternatives": []
-}
-```
-
----
-
-## 11. Auth Requirements Summary
-
-| Endpoint group        | Auth required |
-|------------------------|----------------|
-| `auth/register`, `auth/login`, `auth/token/refresh` | No |
-| Everything else        | Yes (JWT Bearer token) |
-
-All authenticated endpoints filter data by `request.user` — a user can never
-read or modify another user's categories, tasks, plans, streaks, or reviews.
-Attempting to access another user's resource by ID returns `404 Not Found`
-(not `403`) to avoid leaking existence of records.
+Use the implemented plural paths documented above.
