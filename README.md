@@ -94,6 +94,64 @@ npm run lint
 npm run build
 ```
 
+## Deployment Checklist
+
+This repository is prepared for deployment but does not select or configure a
+specific hosting provider. Deploy the backend first so its public API URL is
+available when the frontend is built.
+
+### Backend service
+
+1. Set the service root to `backend/` and install `requirements.txt`.
+2. Configure these environment variables in the hosting platform:
+
+   - `SECRET_KEY`: required secret value; generate a long random string.
+   - `DEBUG=False`: required for production.
+   - `ALLOWED_HOSTS`: comma-separated backend hostnames without schemes, for
+     example `api.example.com`.
+   - `CORS_ALLOWED_ORIGINS`: comma-separated frontend origins with schemes and
+     no trailing slash, for example `https://app.example.com`.
+   - `DATABASE_URL`: production PostgreSQL connection URL supplied by the
+     database provider.
+
+3. Apply database migrations during release:
+
+```powershell
+python manage.py migrate
+```
+
+4. Run `python manage.py check --deploy` with the production environment set,
+   then start the Django WSGI/ASGI application using the process supported by
+   the chosen host. Django's development `runserver` is only for local use.
+
+When `DEBUG=False`, startup fails clearly if `SECRET_KEY` is missing. SQLite
+remains the automatic local default when `DATABASE_URL` is absent; production
+deployments should provide PostgreSQL through `DATABASE_URL`.
+
+### Frontend service
+
+1. Set the service root to `frontend/`.
+2. Set `NEXT_PUBLIC_API_BASE_URL` at build time to the deployed backend API
+   base, including `/api/v1`, for example:
+
+```text
+NEXT_PUBLIC_API_BASE_URL=https://api.example.com/api/v1
+```
+
+3. Install dependencies and create the production build:
+
+```powershell
+npm install
+npm run build
+```
+
+4. After the frontend URL is known, confirm that exact origin appears in the
+   backend's `CORS_ALLOWED_ORIGINS` and redeploy the backend configuration if
+   needed.
+
+Do not commit `backend/.env`, `frontend/.env.local`, database files, or real
+credentials. Use each hosting platform's secret and environment management.
+
 ### Frontend API client
 
 Shared frontend API helpers live in `frontend/src/lib/api/` and use `NEXT_PUBLIC_API_BASE_URL`.

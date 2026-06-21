@@ -26,8 +26,11 @@ import {
   saveAccessToken,
 } from "@/lib/auth/tokens";
 
+const configuredApiBaseUrl = process.env.NEXT_PUBLIC_API_BASE_URL?.replace(/\/+$/, "");
+
 export const API_BASE_URL =
-  process.env.NEXT_PUBLIC_API_BASE_URL ?? "http://127.0.0.1:8000/api/v1";
+  configuredApiBaseUrl ??
+  (process.env.NODE_ENV === "development" ? "http://127.0.0.1:8000/api/v1" : "");
 
 export class ApiError extends Error {
   status: number;
@@ -50,6 +53,11 @@ interface ApiRequestOptions extends Omit<RequestInit, "body" | "headers"> {
 let refreshRequest: Promise<string | null> | null = null;
 
 export function buildApiUrl(path: string) {
+  if (!API_BASE_URL) {
+    throw new Error(
+      "NEXT_PUBLIC_API_BASE_URL must be set for production frontend builds.",
+    );
+  }
   const normalizedPath = path.startsWith("/") ? path : `/${path}`;
   return `${API_BASE_URL}${normalizedPath}`;
 }

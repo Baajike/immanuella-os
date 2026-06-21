@@ -4,9 +4,9 @@ This file tracks build progress across phases and serves as the handoff point
 between Codex (execution) and Claude (architecture/review). Update it after
 each Codex prompt completes and review is done.
 
-**Last updated**: 2026-06-19
-**Current phase**: Post-MVP QA
-**Current prompt**: API documentation cleanup complete
+**Last updated**: 2026-06-21
+**Current phase**: Deployment preparation
+**Current prompt**: Production environment preparation complete
 
 ---
 
@@ -70,6 +70,7 @@ each Codex prompt completes and review is done.
 - 2026-06-19: Added deterministic Never Miss Twice detection for categorized tasks missed on both today and yesterday, exposed through authenticated `GET /api/v1/warnings/never-miss-twice/`. Added seven isolation/rule tests, typed frontend API support, and a restrained dashboard warning banner that refreshes with dashboard task actions. Phase 4 is complete. Next recommended prompt: run a final MVP QA and demo-readiness pass.
 - 2026-06-19: Final post-MVP QA reviewed task CRUD and scheduling, Today actions, dashboard data and warnings, Streaks, Weekly Reviews, authentication refresh, protected routes, navigation, permissions, documentation, and frontend/API types. Fixed an invalid-refresh redirect loop, replaced stale Phase 1 root-page copy, and corrected the auth status label. Next recommended prompt: configure production environment values and deploy the MVP.
 - 2026-06-19: Reconciled `docs/api-spec.md` with the implemented MVP and README. Removed legacy contracts, documented current plural route groups and response shapes, and clearly listed superseded draft paths. README required no changes. Next recommended prompt: configure production environment values and deploy the MVP.
+- 2026-06-21: Prepared production environment handling without deploying. Django now requires an explicit `SECRET_KEY` when `DEBUG=False` while retaining SQLite defaults for local development and PostgreSQL through `DATABASE_URL`. Production frontend requests require `NEXT_PUBLIC_API_BASE_URL`; environment examples and README now document backend-first deployment, required variables, migrations, host/CORS alignment, and secret handling. Next recommended prompt: choose hosting providers and perform a deployment using platform-specific configuration.
 
 ---
 
