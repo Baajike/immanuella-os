@@ -4,9 +4,9 @@ This file tracks build progress across phases and serves as the handoff point
 between Codex (execution) and Claude (architecture/review). Update it after
 each Codex prompt completes and review is done.
 
-**Last updated**: 2026-06-21
-**Current phase**: Deployment preparation
-**Current prompt**: Production environment preparation complete
+**Last updated**: 2026-06-24
+**Current phase**: Render deployment preparation
+**Current prompt**: Render backend deployment prep complete
 
 ---
 
@@ -71,6 +71,7 @@ each Codex prompt completes and review is done.
 - 2026-06-19: Final post-MVP QA reviewed task CRUD and scheduling, Today actions, dashboard data and warnings, Streaks, Weekly Reviews, authentication refresh, protected routes, navigation, permissions, documentation, and frontend/API types. Fixed an invalid-refresh redirect loop, replaced stale Phase 1 root-page copy, and corrected the auth status label. Next recommended prompt: configure production environment values and deploy the MVP.
 - 2026-06-19: Reconciled `docs/api-spec.md` with the implemented MVP and README. Removed legacy contracts, documented current plural route groups and response shapes, and clearly listed superseded draft paths. README required no changes. Next recommended prompt: configure production environment values and deploy the MVP.
 - 2026-06-21: Prepared production environment handling without deploying. Django now requires an explicit `SECRET_KEY` when `DEBUG=False` while retaining SQLite defaults for local development and PostgreSQL through `DATABASE_URL`. Production frontend requests require `NEXT_PUBLIC_API_BASE_URL`; environment examples and README now document backend-first deployment, required variables, migrations, host/CORS alignment, and secret handling. Next recommended prompt: choose hosting providers and perform a deployment using platform-specific configuration.
+- 2026-06-24: Prepared the Django backend for Render deployment. Added Gunicorn and WhiteNoise dependencies, configured WhiteNoise static serving with `STATIC_ROOT`, added `backend/build.sh` for Render builds, and documented Render root/build/start commands plus required environment variables. Local SQLite defaults and PostgreSQL via `DATABASE_URL` remain unchanged. Next recommended prompt: create the Render service and configure production environment values in Render.
 
 ---
 

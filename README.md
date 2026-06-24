@@ -96,9 +96,8 @@ npm run build
 
 ## Deployment Checklist
 
-This repository is prepared for deployment but does not select or configure a
-specific hosting provider. Deploy the backend first so its public API URL is
-available when the frontend is built.
+This repository is prepared for deployment. Deploy the backend first so its
+public API URL is available when the frontend is built.
 
 ### Backend service
 
@@ -127,6 +126,29 @@ python manage.py migrate
 When `DEBUG=False`, startup fails clearly if `SECRET_KEY` is missing. SQLite
 remains the automatic local default when `DATABASE_URL` is absent; production
 deployments should provide PostgreSQL through `DATABASE_URL`.
+
+### Render backend service
+
+Create a Render Web Service for the Django backend with these settings:
+
+- Root Directory: `backend`
+- Build Command: `./build.sh`
+- Start Command: `gunicorn immanuella_os.wsgi:application`
+
+Set these Render environment variables:
+
+- `SECRET_KEY`: required secret value; generate a long random string.
+- `DEBUG=False`
+- `ALLOWED_HOSTS`: your Render backend hostname, for example
+  `immanuella-os-api.onrender.com`.
+- `CORS_ALLOWED_ORIGINS`: your deployed frontend origin, for example
+  `https://immanuella-os.vercel.app`.
+- `DATABASE_URL`: the Render PostgreSQL internal database URL.
+
+The Render build script installs Python dependencies, collects static files,
+and applies migrations. Static files are served by WhiteNoise in production,
+and local development still uses SQLite automatically when `DATABASE_URL` is
+not set.
 
 ### Frontend service
 
